@@ -1,0 +1,15 @@
+﻿Analyzing mossy...                                              
+
+  error - The property 'difficulty' can't be unconditionally accessed because the receiver can be 'null'. Try making the access conditional (using '?.') or adding a null check to the target ('!') - lib\features\adventures\presentation\adventures_screen.dart:180:35 - unchecked_use_of_nullable_value
+warning - The receiver can't be null, so the null-aware operator '?.' is unnecessary. Try replacing the operator '?.' with '.' - lib\features\adventures\presentation\adventures_screen.dart:180:45 - invalid_null_aware_operator
+  error - The property 'description' can't be unconditionally accessed because the receiver can be 'null'. Try making the access conditional (using '?.') or adding a null check to the target ('!') - lib\features\adventures\presentation\adventures_screen.dart:184:22 - unchecked_use_of_nullable_value
+warning - The left operand can't be null, so the right operand is never executed. Try removing the operator and the right operand - lib\features\adventures\presentation\adventures_screen.dart:184:37 - dead_null_aware_expression
+   info - 'anonKey' is deprecated and shouldn't be used. Use publishableKey instead. anonKey will be removed in a future major version. Try replacing the use of the deprecated member with the replacement - lib\services\supabase_service.dart:65:9 - deprecated_member_use
+
+flutter : 5 issues found. (ran in 4.0s)
+At line:1 char:93
++ ... .Net.WebProxy($env:HTTP_PROXY); flutter analyze --no-pub 2>&1 | Out-F ...
++                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (5 issues found. (ran in 4.0s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

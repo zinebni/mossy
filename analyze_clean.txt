@@ -1,0 +1,31 @@
+﻿Analyzing mossy...                                              
+
+warning - The receiver can't be 'null' because of short-circuiting, so the null-aware operator '?.' can't be used. Try replacing the operator '?.' with '.' - lib\features\adventures\presentation\adventures_screen.dart:180:46 - invalid_null_aware_operator
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\settings\presentation\settings_screen.dart:213:52 - deprecated_member_use
+warning - Returning a 'Future' without 'await' inside a try block. Try adding an 'await' - lib\services\achievement_service.dart:185:9 - unawaited_return_in_try_block
+   info - Uses 'await' on an instance of 'AiContent', which is not a subtype of 'Future'. Try removing the 'await' or changing the expression - lib\services\ai_content_service.dart:193:16 - await_only_futures
+   info - Uses 'await' on an instance of 'GardenState', which is not a subtype of 'Future'. Try removing the 'await' or changing the expression - lib\services\garden_service.dart:120:14 - await_only_futures
+   info - Uses 'await' on an instance of 'GardenState', which is not a subtype of 'Future'. Try removing the 'await' or changing the expression - lib\services\garden_service.dart:144:14 - await_only_futures
+   info - The import of 'dart:typed_data' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/foundation.dart'. Try removing the import directive - lib\services\plant_identification_service.dart:3:8 - unnecessary_import
+   info - Uses 'await' on an instance of 'IdentificationResult', which is not a subtype of 'Future'. Try removing the 'await' or changing the expression - lib\services\plant_identification_service.dart:226:14 - await_only_futures
+   info - Uses 'await' on an instance of 'PointsEntry', which is not a subtype of 'Future'. Try removing the 'await' or changing the expression - lib\services\points_service.dart:203:16 - await_only_futures
+   info - 'anonKey' is deprecated and shouldn't be used. Use publishableKey instead. anonKey will be removed in a future major version. Try replacing the use of the deprecated member with the replacement - lib\services\supabase_service.dart:65:9 - deprecated_member_use
+warning - The stack trace variable '_' isn't used and can be removed. Try removing the stack trace variable, or using it - lib\shared\providers\app_providers.dart:127:17 - unused_catch_stack
+  error - Undefined name 'st'. Try correcting the name to one that is defined, or defining the name - lib\shared\providers\app_providers.dart:128:35 - undefined_identifier
+warning - The stack trace variable '_' isn't used and can be removed. Try removing the stack trace variable, or using it - lib\shared\providers\app_providers.dart:137:17 - unused_catch_stack
+warning - The stack trace variable '_' isn't used and can be removed. Try removing the stack trace variable, or using it - lib\shared\providers\app_providers.dart:150:17 - unused_catch_stack
+warning - The stack trace variable '_' isn't used and can be removed. Try removing the stack trace variable, or using it - lib\shared\providers\app_providers.dart:162:17 - unused_catch_stack
+warning - The stack trace variable '_' isn't used and can be removed. Try removing the stack trace variable, or using it - lib\shared\providers\app_providers.dart:203:17 - unused_catch_stack
+  error - Undefined name 'st'. Try correcting the name to one that is defined, or defining the name - lib\shared\providers\app_providers.dart:204:35 - undefined_identifier
+warning - The stack trace variable '_' isn't used and can be removed. Try removing the stack trace variable, or using it - lib\shared\providers\app_providers.dart:279:17 - unused_catch_stack
+  error - Undefined name 'st'. Try correcting the name to one that is defined, or defining the name - lib\shared\providers\app_providers.dart:280:35 - undefined_identifier
+warning - The stack trace variable '_' isn't used and can be removed. Try removing the stack trace variable, or using it - lib\shared\providers\app_providers.dart:337:17 - unused_catch_stack
+  error - Undefined name 'st'. Try correcting the name to one that is defined, or defining the name - lib\shared\providers\app_providers.dart:338:35 - undefined_identifier
+
+flutter : 21 issues found. (ran in 4.4s)
+At line:1 char:93
++ ... .Net.WebProxy($env:HTTP_PROXY); flutter analyze --no-pub 2>&1 | Out-F ...
++                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (21 issues found. (ran in 4.4s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

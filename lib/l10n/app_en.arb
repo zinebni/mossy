@@ -1,0 +1,156 @@
+{
+  "@@locale": "en",
+  "appName": "Mossy",
+  "tagline": "Look closer. Discover more.",
+  
+  "goodMorning": "Good morning, Explorer!",
+  "goodAfternoon": "Good afternoon, Explorer!",
+  "goodEvening": "Good evening, Explorer!",
+  
+  "home": "Home",
+  "explore": "Explore",
+  "collection": "Collection",
+  "adventures": "Adventures",
+  "garden": "Garden",
+  
+  "discoverPlant": "Discover a Plant",
+  "takePhoto": "Take a Photo",
+  "chooseFromGallery": "Choose from Gallery",
+  "identifyPlant": "Identify This Plant",
+  "retake": "Retake",
+  "chooseAnother": "Choose Another",
+  
+  "saveToCollection": "Save to Collection",
+  "learnMore": "Learn More",
+  "identifyAnother": "Identify Another",
+  
+  "dailyChallenge": "Daily Challenge",
+  "recentDiscoveries": "Recent Discoveries",
+  "yourGarden": "Your Garden",
+  "achievements": "Achievements",
+  
+  "myCollection": "My Collection",
+  "searchPlants": "Search plants...",
+  "all": "All",
+  "favorites": "Favorites",
+  "byFamily": "By Family",
+  "noDiscoveries": "No discoveries yet",
+  "startExploring": "Start exploring to build your collection!",
+  "totalSpecies": "Total Species",
+  "favoritesCount": "Favorites",
+  
+  "daily": "Daily",
+  "challenges": "Challenges",
+  "completed": "Completed",
+  "easy": "Easy",
+  "medium": "Medium",
+  "hard": "Hard",
+  "startMission": "Start Mission",
+  "submitDiscovery": "Submit Discovery",
+  "points": "{count} pts",
+  "@points": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  
+  "gardenLevel": "Garden Level {level}",
+  "@gardenLevel": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "growYourGarden": "How to Grow Your Garden",
+  "gardenTip": "Identify plants, complete adventures, and earn achievements to grow your garden!",
+  
+  "profile": "Profile",
+  "explorerLevel": "Explorer Level {level}",
+  "@explorerLevel": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "totalPoints": "Total Points",
+  "totalDiscoveries": "Total Discoveries",
+  "adventuresComplete": "Adventures Complete",
+  "daysActive": "Days Active",
+  
+  "settings": "Settings",
+  "language": "Language",
+  "notifications": "Notifications",
+  "locationPermissions": "Location Permissions",
+  "about": "About",
+  "privacy": "Privacy Information",
+  "signOut": "Sign Out",
+  "deleteAccount": "Delete Account",
+  
+  "discoveryMap": "Discovery Map",
+  "noLocations": "No discoveries with location data yet",
+  
+  "demoMode": "Demo Mode",
+  "demoModeDescription": "You're exploring in demo mode. Configure Supabase to save your discoveries.",
+  
+  "loading": "Loading...",
+  "error": "Something went wrong",
+  "retry": "Retry",
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "edit": "Edit",
+  "confirm": "Confirm",
+  
+  "onboarding1Title": "Discover Plants Around You",
+  "onboarding1Desc": "Point your camera at any plant and let Mossy identify it for you using advanced AI.",
+  "onboarding2Title": "Learn Fascinating Facts",
+  "onboarding2Desc": "Get interesting facts, observation tips, and educational content about every plant you discover.",
+  "onboarding3Title": "Collect & Complete Adventures",
+  "onboarding3Desc": "Build your personal nature journal and take on exciting exploration challenges.",
+  "onboarding4Title": "Grow Your Virtual Garden",
+  "onboarding4Desc": "Watch your garden bloom as you explore more of the natural world around you.",
+  "skip": "Skip",
+  "next": "Next",
+  "getStarted": "Get Started",
+  
+  "lookingClosely": "Looking closely at your discovery...",
+  "searchingBotanical": "Searching the botanical world...",
+  "consultingEncyclopedia": "Consulting the plant encyclopedia...",
+  "preparingSomething": "Preparing something interesting...",
+  "almostThere": "Almost there...",
+  
+  "veryLikely": "Very Likely",
+  "likely": "Likely",
+  "possible": "Possible",
+  "uncertain": "Uncertain",
+  
+  "scientificName": "Scientific Name",
+  "commonName": "Common Name",
+  "family": "Family",
+  "discoveredOn": "Discovered on {date}",
+  "@discoveredOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "personalNotes": "Personal Notes",
+  "addNotes": "Add your personal notes...",
+  "funFacts": "Fun Facts",
+  "observationTips": "Observation Tips",
+  "safetyNote": "Safety Note",
+  "introduction": "Introduction",
+  "description": "Description",
+  "otherCandidates": "Other Possible Matches",
+  
+  "photoTips": "Photo Tips",
+  "photoTip1": "Get close to the plant",
+  "photoTip2": "Include leaves and flowers",
+  "photoTip3": "Use good lighting",
+  "photoTip4": "Avoid blurry shots"
+}

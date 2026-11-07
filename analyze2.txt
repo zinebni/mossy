@@ -1,0 +1,81 @@
+﻿Analyzing mossy...                                              
+
+warning - Unused import: 'app_colors.dart'. Try removing the import directive - lib\core\theme\app_shadows.dart:2:8 - unused_import
+  error - Undefined name 'MissionCategory'. Try correcting the name to one that is defined, or defining the name - lib\features\adventures\presentation\adventures_screen.dart:86:87 - undefined_identifier
+  error - Undefined name 'MissionCategory'. Try correcting the name to one that is defined, or defining the name - lib\features\adventures\presentation\adventures_screen.dart:87:87 - undefined_identifier
+  error - Undefined class 'MissionDifficulty'. Try changing the name to the name of an existing class, or creating a class with the name 'MissionDifficulty' - lib\features\adventures\presentation\adventures_screen.dart:136:26 - undefined_class
+  error - Undefined name 'MissionDifficulty'. Try correcting the name to one that is defined, or defining the name - lib\features\adventures\presentation\adventures_screen.dart:138:12 - undefined_identifier
+  error - Undefined name 'MissionDifficulty'. Try correcting the name to one that is defined, or defining the name - lib\features\adventures\presentation\adventures_screen.dart:139:12 - undefined_identifier
+  error - Undefined name 'MissionDifficulty'. Try correcting the name to one that is defined, or defining the name - lib\features\adventures\presentation\adventures_screen.dart:140:12 - undefined_identifier
+warning - The receiver can't be 'null' because of short-circuiting, so the null-aware operator '?.' can't be used. Try replacing the operator '?.' with '.' - lib\features\adventures\presentation\adventures_screen.dart:181:46 - invalid_null_aware_operator
+  error - The expression doesn't evaluate to a function, so it can't be invoked - lib\features\explore\presentation\explore_screen.dart:61:15 - invocation_of_non_function_expression
+  error - The getter 'borderLight' isn't defined for the type 'AppColors'. Try importing the library that defines 'borderLight', correcting the name to the name of an existing getter, or defining a getter or field named 'borderLight' - lib\features\home\presentation\home_screen.dart:69:55 - undefined_getter
+  error - The getter 'borderLight' isn't defined for the type 'AppColors'. Try importing the library that defines 'borderLight', correcting the name to the name of an existing getter, or defining a getter or field named 'borderLight' - lib\features\home\presentation\home_screen.dart:202:59 - undefined_getter
+warning - Unused import: '../../../shared/providers/app_providers.dart'. Try removing the import directive - lib\features\settings\presentation\settings_screen.dart:7:8 - unused_import
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre. Try replacing the use of the deprecated member with the replacement - lib\features\settings\presentation\settings_screen.dart:214:52 - deprecated_member_use
+warning - Unused import: 'dart:math'. Try removing the import directive - lib\features\splash\presentation\splash_screen.dart:2:8 - unused_import
+  error - The expression doesn't evaluate to a function, so it can't be invoked - lib\features\splash\presentation\splash_screen.dart:103:19 - invocation_of_non_function_expression
+  error - The named parameter 'title' is required, but there's no corresponding argument. Try adding the required argument - lib\services\achievement_service.dart:21:5 - missing_required_argument
+  error - The named parameter 'name' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'name' - lib\services\achievement_service.dart:23:7 - undefined_named_parameter
+  error - The named parameter 'requiredValue' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'requiredValue' - lib\services\achievement_service.dart:25:7 - undefined_named_parameter
+  error - The argument type 'String' can't be assigned to the parameter type 'IconData'.  - lib\services\achievement_service.dart:26:13 - argument_type_not_assignable
+  error - The named parameter 'earnedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'earnedAt' - lib\services\achievement_service.dart:28:7 - undefined_named_parameter
+  error - The named parameter 'title' is required, but there's no corresponding argument. Try adding the required argument - lib\services\achievement_service.dart:30:5 - missing_required_argument
+  error - The named parameter 'name' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'name' - lib\services\achievement_service.dart:32:7 - undefined_named_parameter
+  error - The named parameter 'requiredValue' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'requiredValue' - lib\services\achievement_service.dart:34:7 - undefined_named_parameter
+  error - The argument type 'String' can't be assigned to the parameter type 'IconData'.  - lib\services\achievement_service.dart:35:13 - argument_type_not_assignable
+  error - The named parameter 'earnedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'earnedAt' - lib\services\achievement_service.dart:37:7 - undefined_named_parameter
+  error - The named parameter 'title' is required, but there's no corresponding argument. Try adding the required argument - lib\services\achievement_service.dart:39:11 - missing_required_argument
+  error - The named parameter 'name' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'name' - lib\services\achievement_service.dart:41:7 - undefined_named_parameter
+  error - The named parameter 'requiredValue' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'requiredValue' - lib\services\achievement_service.dart:43:7 - undefined_named_parameter
+  error - A value of type 'String' can't be assigned to a parameter of type 'IconData' in a const constructor. Try using a subtype, or removing the keyword 'const' - lib\services\achievement_service.dart:44:7 - const_constructor_param_type_mismatch
+  error - The argument type 'String' can't be assigned to the parameter type 'IconData'.  - lib\services\achievement_service.dart:44:13 - argument_type_not_assignable
+  error - The named parameter 'title' is required, but there's no corresponding argument. Try adding the required argument - lib\services\achievement_service.dart:47:11 - missing_required_argument
+  error - The named parameter 'name' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'name' - lib\services\achievement_service.dart:49:7 - undefined_named_parameter
+  error - The named parameter 'requiredValue' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'requiredValue' - lib\services\achievement_service.dart:51:7 - undefined_named_parameter
+  error - A value of type 'String' can't be assigned to a parameter of type 'IconData' in a const constructor. Try using a subtype, or removing the keyword 'const' - lib\services\achievement_service.dart:52:7 - const_constructor_param_type_mismatch
+  error - The argument type 'String' can't be assigned to the parameter type 'IconData'.  - lib\services\achievement_service.dart:52:13 - argument_type_not_assignable
+  error - The named parameter 'title' is required, but there's no corresponding argument. Try adding the required argument - lib\services\achievement_service.dart:55:11 - missing_required_argument
+  error - The named parameter 'name' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'name' - lib\services\achievement_service.dart:57:7 - undefined_named_parameter
+  error - The named parameter 'requiredValue' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'requiredValue' - lib\services\achievement_service.dart:59:7 - undefined_named_parameter
+  error - A value of type 'String' can't be assigned to a parameter of type 'IconData' in a const constructor. Try using a subtype, or removing the keyword 'const' - lib\services\achievement_service.dart:60:7 - const_constructor_param_type_mismatch
+  error - The argument type 'String' can't be assigned to the parameter type 'IconData'.  - lib\services\achievement_service.dart:60:13 - argument_type_not_assignable
+  error - The named parameter 'title' is required, but there's no corresponding argument. Try adding the required argument - lib\services\achievement_service.dart:63:5 - missing_required_argument
+  error - The named parameter 'name' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'name' - lib\services\achievement_service.dart:65:7 - undefined_named_parameter
+  error - The named parameter 'requiredValue' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'requiredValue' - lib\services\achievement_service.dart:67:7 - undefined_named_parameter
+  error - The argument type 'String' can't be assigned to the parameter type 'IconData'.  - lib\services\achievement_service.dart:68:13 - argument_type_not_assignable
+  error - The named parameter 'earnedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'earnedAt' - lib\services\achievement_service.dart:70:7 - undefined_named_parameter
+  error - The named parameter 'title' is required, but there's no corresponding argument. Try adding the required argument - lib\services\achievement_service.dart:72:5 - missing_required_argument
+  error - The named parameter 'name' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'name' - lib\services\achievement_service.dart:74:7 - undefined_named_parameter
+  error - The named parameter 'requiredValue' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'requiredValue' - lib\services\achievement_service.dart:76:7 - undefined_named_parameter
+  error - The argument type 'String' can't be assigned to the parameter type 'IconData'.  - lib\services\achievement_service.dart:77:13 - argument_type_not_assignable
+  error - The named parameter 'earnedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'earnedAt' - lib\services\achievement_service.dart:79:7 - undefined_named_parameter
+  error - The named parameter 'earnedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'earnedAt' - lib\services\achievement_service.dart:134:11 - undefined_named_parameter
+  error - The named parameter 'earnedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'earnedAt' - lib\services\achievement_service.dart:150:9 - undefined_named_parameter
+  error - The named parameter 'title' is required, but there's no corresponding argument. Try adding the required argument - lib\services\achievement_service.dart:181:16 - missing_required_argument
+  error - The named parameter 'name' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'name' - lib\services\achievement_service.dart:183:11 - undefined_named_parameter
+  error - The named parameter 'requiredValue' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'requiredValue' - lib\services\achievement_service.dart:185:11 - undefined_named_parameter
+  error - The argument type 'String' can't be assigned to the parameter type 'IconData'.  - lib\services\achievement_service.dart:186:17 - argument_type_not_assignable
+  error - The named parameter 'earnedAt' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'earnedAt' - lib\services\achievement_service.dart:188:11 - undefined_named_parameter
+warning - Returning a 'Future' without 'await' inside a try block. Try adding an 'await' - lib\services\achievement_service.dart:193:9 - unawaited_return_in_try_block
+warning - Returning a 'Future' without 'await' inside a try block. Try adding an 'await' - lib\services\achievement_service.dart:232:7 - unawaited_return_in_try_block
+warning - Returning a 'Future' without 'await' inside a try block. Try adding an 'await' - lib\services\ai_content_service.dart:196:7 - unawaited_return_in_try_block
+  error - The method 'pointsForLevel' isn't defined for the type 'GardenState'. Try correcting the name to the name of an existing method, or defining a method named 'pointsForLevel' - lib\services\garden_service.dart:84:38 - undefined_method
+warning - Returning a 'Future' without 'await' inside a try block. Try adding an 'await' - lib\services\garden_service.dart:118:9 - unawaited_return_in_try_block
+   info - The import of 'dart:typed_data' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/foundation.dart'. Try removing the import directive - lib\services\plant_identification_service.dart:3:8 - unnecessary_import
+warning - Returning a 'Future' without 'await' inside a try block. Try adding an 'await' - lib\services\plant_identification_service.dart:223:9 - unawaited_return_in_try_block
+warning - Returning a 'Future' without 'await' inside a try block. Try adding an 'await' - lib\services\points_service.dart:150:7 - unawaited_return_in_try_block
+warning - Returning a 'Future' without 'await' inside a try block. Try adding an 'await' - lib\services\points_service.dart:205:7 - unawaited_return_in_try_block
+   info - 'anonKey' is deprecated and shouldn't be used. Use publishableKey instead. anonKey will be removed in a future major version. Try replacing the use of the deprecated member with the replacement - lib\services\supabase_service.dart:65:9 - deprecated_member_use
+warning - The stack trace variable 'st' isn't used and can be removed. Try removing the stack trace variable, or using it - lib\shared\providers\app_providers.dart:137:17 - unused_catch_stack
+warning - The stack trace variable 'st' isn't used and can be removed. Try removing the stack trace variable, or using it - lib\shared\providers\app_providers.dart:150:17 - unused_catch_stack
+warning - The stack trace variable 'st' isn't used and can be removed. Try removing the stack trace variable, or using it - lib\shared\providers\app_providers.dart:162:17 - unused_catch_stack
+  error - The getter 'mascotTexture' isn't defined for the type 'AppColors'. Try importing the library that defines 'mascotTexture', correcting the name to the name of an existing getter, or defining a getter or field named 'mascotTexture' - lib\shared\widgets\mascot\mascot_painter.dart:146:27 - undefined_getter
+
+flutter : 71 issues found. (ran in 6.2s)
+At line:1 char:93
++ ... .Net.WebProxy($env:HTTP_PROXY); flutter analyze --no-pub 2>&1 | Out-F ...
++                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (71 issues found. (ran in 6.2s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

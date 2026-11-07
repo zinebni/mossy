@@ -1,0 +1,11 @@
+﻿Analyzing mossy...                                              
+
+warning - The receiver can't be 'null' because of short-circuiting, so the null-aware operator '?.' can't be used. Try replacing the operator '?.' with '.' - lib\features\adventures\presentation\adventures_screen.dart:180:46 - invalid_null_aware_operator
+
+flutter : 1 issue found. (ran in 3.8s)
+At line:1 char:93
++ ... .Net.WebProxy($env:HTTP_PROXY); flutter analyze --no-pub 2>&1 | Out-F ...
++                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (1 issue found. (ran in 3.8s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

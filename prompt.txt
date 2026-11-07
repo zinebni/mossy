@@ -1,0 +1,1126 @@
+# MASTER PROJECT PROMPT — MOSSY
+## AI-Powered Nature Exploration & Discovery App
+
+You are a senior Flutter engineer, mobile product designer, AI engineer, backend architect, and UX specialist.
+
+Your mission is to DESIGN AND BUILD a complete, polished, functional mobile application named **Mossy**, following every requirement below.
+
+Do not just explain how to build it. Actually create the project, implement the features, write the code, configure the architecture, and run the available tests.
+
+Work autonomously. Make sensible technical decisions without asking me unnecessary questions. Prioritize a working, coherent application over excessive complexity.
+
+---
+
+# 1. PRODUCT VISION
+
+## Application name
+Mossy
+
+## Tagline
+"Look closer. Discover more."
+
+## Main concept
+Mossy is an AI-powered nature exploration companion that encourages people to discover, understand, and collect the plants and natural elements around them.
+
+The application combines:
+- AI-powered plant identification.
+- Generative AI educational explanations.
+- Personal nature discovery journal.
+- AI-generated exploration challenges.
+- Gamification and collectible achievements.
+- A virtual garden that grows as the user explores.
+- A cute, evolving mascot that accompanies the user.
+
+Mossy must NOT feel like a generic AI chatbot or a simple plant identification tool.
+
+It should feel like a beautiful, playful, interactive nature discovery game.
+
+The main experience:
+
+**Photograph → Identify → Understand → Collect → Explore → Grow your garden.**
+
+## Target audience
+Anyone who enjoys nature, exploring outdoors, discovering plants, learning interesting facts, and collecting achievements.
+
+## Initial scope
+Focus on plants and flowers for the first release.
+
+Design the architecture so wildlife identification can be added later without rewriting the application.
+
+---
+
+# 2. VISUAL IDENTITY AND DESIGN SYSTEM
+
+The design is extremely important.
+
+Create a polished, modern, playful, cute, premium-looking mobile application.
+
+The visual direction:
+- Cute and playful.
+- Soft pastel colors.
+- Botanical illustrations.
+- Friendly rounded interfaces.
+- Smooth animations.
+- Organic shapes.
+- Beautiful cards.
+- Generous spacing.
+- Warm and welcoming atmosphere.
+
+Avoid:
+- Generic admin dashboard interfaces.
+- Excessively technical-looking screens.
+- Plain white screens with basic buttons.
+- Excessive gradients.
+- Overcrowded layouts.
+- Default Flutter-looking interfaces.
+
+## Color palette
+
+Use these colors consistently:
+
+- Sage green: `#829B79`
+- Cream background: `#F7F3E9`
+- Mint green: `#D9E8CF`
+- Lavender: `#E9DDF5`
+- Peach: `#F5D6C5`
+- Butter yellow: `#EFCF79`
+
+Use dark green or warm charcoal for readable text.
+
+Create a centralized design system containing:
+- Colors.
+- Typography.
+- Spacing.
+- Border radiuses.
+- Shadows.
+- Button styles.
+- Card styles.
+- Text styles.
+
+Cards should generally have 18–24 px rounded corners.
+
+The application must support different screen sizes and avoid overflow.
+
+## Mascot: Mossy
+
+Create a small, adorable moss creature.
+
+It should:
+- Have a rounded, organic moss-like body.
+- Have expressive eyes.
+- Have a friendly personality.
+- Feel like a tiny forest creature.
+- Have several expressions: happy, curious, excited, sleepy, surprised.
+- Visually evolve as the user progresses.
+
+The mascot is a central part of the experience, not a decorative element added randomly.
+
+Use custom illustrations, SVG assets, or reusable Flutter illustrations where practical.
+
+Do not depend on generating a new AI image every time the mascot changes expression.
+
+Create reusable mascot states and lightweight animations.
+
+If custom illustrations cannot be generated automatically, create attractive original placeholder illustrations using Flutter or SVG, and organize them so they can easily be replaced later.
+
+---
+
+# 3. APPLICATION NAVIGATION
+
+Implement a bottom navigation bar with five main sections:
+
+1. Home
+2. Explore
+3. Collection
+4. Adventures
+5. Garden
+
+Each section must have its own functional screen.
+
+The profile, achievements, settings, and discovery map can be accessed through the Home screen or dedicated navigation routes.
+
+Use GoRouter for navigation.
+
+Navigation must work correctly, preserve state where appropriate, and handle back navigation.
+
+---
+
+# 4. REQUIRED SCREENS
+
+## A. Splash Screen
+
+Create a beautiful animated splash screen.
+
+Display:
+- Mossy mascot.
+- Application name.
+- Tagline.
+- A subtle organic animation.
+
+Navigate to onboarding or Home depending on the user's authentication/onboarding state.
+
+## B. Onboarding
+
+Create a short onboarding experience introducing:
+
+1. Discover plants around you.
+2. Learn interesting facts with AI.
+3. Collect discoveries and complete adventures.
+4. Grow your own virtual garden.
+
+Use illustrations and friendly copy.
+
+Allow the user to:
+- Create an account.
+- Sign in.
+- Continue as a guest if supported by the implementation.
+
+Do not force authentication before allowing basic exploration.
+
+## C. Home Screen
+
+The Home screen should feel alive and personalized.
+
+Include:
+
+- Friendly greeting.
+- Mossy mascot with an appropriate expression.
+- Explorer level and points.
+- A prominent Explore button.
+- Current daily challenge.
+- Recent discoveries.
+- Garden preview.
+- Achievement progress.
+- A small inspirational nature fact or message.
+
+Use realistic empty states for new users.
+
+The main action should immediately encourage the user to discover something.
+
+## D. Explore Screen
+
+This is one of the most important screens.
+
+Create a beautiful plant discovery interface.
+
+Allow users to:
+- Take a photo using the device camera.
+- Select an image from the gallery.
+- Preview the selected image.
+- Retake or replace the image.
+- Start plant identification.
+
+Use `image_picker` initially to avoid unnecessary camera complexity.
+
+Display an animated identification loading screen.
+
+Use Mossy with a magnifying glass or other discovery-related animation.
+
+Show useful loading messages such as:
+- "Looking closely at your discovery..."
+- "Searching the botanical world..."
+- "Preparing something interesting..."
+
+Handle failures gracefully.
+
+## E. Identification Results
+
+After identification, display:
+
+- Uploaded plant photograph.
+- Most likely plant name.
+- Scientific name.
+- Common name.
+- Plant family.
+- Identification score.
+- Other possible identification candidates.
+- Short introduction.
+- Description.
+- Interesting facts.
+- Observation tips.
+- Safety information when available.
+
+Use a beautiful, editorial-style discovery card.
+
+The result must distinguish between a strong identification and an uncertain one.
+
+Never describe the Pl@ntNet score as a calibrated probability.
+
+If confidence is low, show several candidates and communicate uncertainty clearly.
+
+Provide actions:
+- Save discovery.
+- View more details.
+- Identify another plant.
+- Add personal notes.
+
+Do not invent botanical facts when reliable information is unavailable.
+
+## F. Discovery Details
+
+Every saved discovery should have a dedicated detail page.
+
+Include:
+- Photo.
+- Common name.
+- Scientific name.
+- Family.
+- Date discovered.
+- AI-generated educational content.
+- Fun facts.
+- Observation tips.
+- Personal notes.
+- Optional location.
+- Favorite action.
+
+Allow users to edit their personal notes and delete their own discoveries.
+
+## G. My Collection
+
+Create a personal nature journal.
+
+Display discoveries in a beautiful grid or list.
+
+Each card should include:
+- Plant image.
+- Common name.
+- Scientific name.
+- Discovery date.
+
+Features:
+- Search.
+- Filter.
+- Favorites.
+- Empty state.
+- Discovery statistics.
+- Total species discovered.
+
+The collection must retrieve real saved data, not hardcoded sample cards.
+
+Provide attractive sample/demo data only when the application is running in demo mode.
+
+## H. Adventures
+
+This section makes Mossy more than a plant identification application.
+
+Create an adventure system with challenges.
+
+Examples:
+
+- Discover a yellow flower.
+- Find a plant with five petals.
+- Find a plant with interesting leaf shapes.
+- Discover three different plant families.
+- Find a flower with a purple color.
+- Explore and identify a tree.
+
+Each challenge should have:
+- Title.
+- Description.
+- Difficulty.
+- Reward points.
+- Category.
+- Progress.
+- Completion status.
+
+Support:
+- Daily challenges.
+- General challenges.
+- Completed challenges.
+- In-progress challenges.
+
+Use AI to generate additional challenges where possible.
+
+AI-generated missions must follow a structured JSON format.
+
+Mission completion must be validated using available evidence, such as plant identification and structured characteristics.
+
+Do not award points merely because an AI model returns an arbitrary positive answer.
+
+Provide a clear retry or alternative path when verification is uncertain.
+
+## I. Garden
+
+Create a beautiful virtual garden that evolves with the user.
+
+This is a major emotional feature of Mossy.
+
+The garden should grow when users:
+- Identify plants.
+- Save discoveries.
+- Complete challenges.
+- Unlock achievements.
+
+Implement progression such as:
+- Initial empty garden.
+- Small moss patch.
+- Growing flowers.
+- More vegetation.
+- Decorative elements.
+- Unlockable garden items.
+
+Use prepared illustrations and lightweight Flutter animations.
+
+Do not build a complex 3D game or depend on expensive AI image generation.
+
+Persist the garden state.
+
+## J. Profile and Achievements
+
+Include:
+- Username.
+- Avatar.
+- Explorer level.
+- Total points.
+- Number of discoveries.
+- Completed adventures.
+- Achievements.
+- Progress toward the next level.
+
+Create achievements such as:
+- First Discovery.
+- Curious Explorer.
+- Flower Collector.
+- Nature Enthusiast.
+- Adventure Seeker.
+
+Achievement rewards must be awarded consistently and only once.
+
+## K. Discovery Map
+
+Implement an optional personal discovery map.
+
+Use OpenStreetMap with `flutter_map`.
+
+Display the locations of discoveries when location information is available.
+
+Location must be optional.
+
+Never require location permission for normal plant identification.
+
+Protect user privacy. Do not expose precise coordinates publicly.
+
+## L. Settings
+
+Include:
+- Profile management.
+- Language preference.
+- Notification preferences.
+- Location permissions.
+- Privacy information.
+- Sign out.
+- Account deletion instructions or implementation.
+
+Use proper permission handling.
+
+---
+
+# 5. TECHNICAL STACK
+
+Use the following stack unless a genuine compatibility issue requires an alternative.
+
+## Frontend
+
+- Flutter.
+- Dart.
+- Material 3 with a heavily customized visual design.
+- Riverpod for state management.
+- GoRouter for navigation.
+
+## Backend
+
+- Supabase.
+- PostgreSQL.
+- Supabase Authentication.
+- Supabase Storage.
+- Supabase Edge Functions.
+
+## AI and external APIs
+
+### Plant identification: Pl@ntNet API
+
+Use the official Pl@ntNet identification API.
+
+Purpose:
+- Identify plant species from photographs.
+- Retrieve scientific names.
+- Retrieve common names when available.
+- Retrieve plant family information.
+- Retrieve ranked identification candidates and scores.
+
+The plant identification provider must be isolated behind a service interface.
+
+Do not hardcode API keys.
+
+### Generative AI: Gemini API
+
+Use Gemini for:
+- Educational explanations.
+- Interesting facts.
+- Observation tips.
+- Structured challenge generation.
+- Optional challenge verification assistance.
+
+Gemini must NOT be responsible for deciding the botanical identity when Pl@ntNet is available.
+
+Use structured JSON responses and validate them before displaying them.
+
+Do not treat generated information as verified scientific truth.
+
+### Maps
+
+Use:
+- OpenStreetMap.
+- `flutter_map`.
+
+---
+
+# 6. BACKEND ARCHITECTURE
+
+Use this architecture:
+
+Flutter Application
+        |
+        | HTTPS
+        v
+Supabase Edge Functions
+        |
+        +---- Pl@ntNet API
+        |
+        +---- Gemini API
+        |
+        +---- Supabase PostgreSQL
+        |
+        +---- Supabase Storage
+
+The Flutter application must never contain private external API keys.
+
+Store secrets in Supabase Edge Function environment variables:
+
+- `PLANTNET_API_KEY`
+- `GEMINI_API_KEY`
+
+Never expose the Supabase service-role key in Flutter.
+
+Create reusable backend services and proper error handling.
+
+Implement:
+- Authentication validation.
+- Input validation.
+- Image validation.
+- API timeouts.
+- Error handling.
+- Retry behavior where appropriate.
+- Basic rate limiting.
+- Caching.
+- Logging without exposing sensitive information.
+
+If the required API credentials are unavailable, the application must still be runnable using a clearly identified demo mode.
+
+Do not silently pretend that mock responses are real AI results.
+
+---
+
+# 7. REQUIRED EDGE FUNCTIONS
+
+Implement the following functions.
+
+## identify-plant
+
+Responsibilities:
+
+1. Validate the authenticated user or supported guest flow.
+2. Validate the image.
+3. Retrieve or process the uploaded image.
+4. Call Pl@ntNet.
+5. Normalize the identification response.
+6. Return ranked candidates.
+
+Example normalized response:
+
+{
+  "status": "identified",
+  "candidates": [
+    {
+      "scientific_name": "Bellis perennis",
+      "common_name": "Common daisy",
+      "family": "Asteraceae",
+      "score": 0.91
+    }
+  ]
+}
+
+This is an example response structure, not a hardcoded identification result.
+
+## generate-discovery-content
+
+Input:
+- Scientific name.
+- Common name.
+- Family.
+- Available verified metadata.
+- Preferred language.
+
+Use Gemini to generate structured content:
+
+{
+  "introduction": "...",
+  "description": "...",
+  "fun_facts": [],
+  "observation_tips": [],
+  "safety_note": null
+}
+
+Validate the response.
+
+Avoid unsupported medical, edible, or toxicity claims.
+
+If information cannot be established reliably, say so.
+
+## generate-missions
+
+Generate structured exploration challenges.
+
+Return:
+- Title.
+- Description.
+- Difficulty.
+- Category.
+- Reward points.
+- Verification criteria.
+
+## verify-mission
+
+Validate mission submissions using available evidence.
+
+Prevent duplicate rewards.
+
+## award-points
+
+Award points through trusted backend logic.
+
+Use transactional logic so rewards cannot be duplicated.
+
+---
+
+# 8. DATABASE DESIGN
+
+Create Supabase SQL migrations for the following tables.
+
+## profiles
+
+- id (UUID, references auth.users)
+- username
+- avatar_url
+- total_points
+- explorer_level
+- created_at
+
+## discoveries
+
+- id
+- user_id
+- scientific_name
+- common_name
+- family
+- identification_score
+- image_path
+- ai_content (JSONB)
+- latitude (nullable)
+- longitude (nullable)
+- personal_notes
+- is_favorite
+- discovered_at
+- created_at
+
+## species_cache
+
+- id
+- scientific_name
+- common_name
+- family
+- educational_content (JSONB)
+- language
+- updated_at
+
+Use scientific name and language as appropriate cache identifiers.
+
+## missions
+
+- id
+- title
+- description
+- category
+- difficulty
+- reward_points
+- verification_criteria (JSONB)
+- is_active
+- created_at
+
+## user_missions
+
+- id
+- user_id
+- mission_id
+- status
+- verification_result (JSONB)
+- completed_at
+- created_at
+
+## achievements
+
+- id
+- name
+- description
+- required_value
+- icon
+- created_at
+
+## user_achievements
+
+- id
+- user_id
+- achievement_id
+- earned_at
+
+## garden_states
+
+- user_id
+- garden_level
+- unlocked_items (JSONB)
+- updated_at
+
+## points_ledger
+
+- id
+- user_id
+- points
+- reason
+- reference_id
+- created_at
+
+Use constraints, indexes, foreign keys, and timestamps properly.
+
+Create Row Level Security policies.
+
+Users must only access their own private profile data, discoveries, mission progress, garden state, and points history.
+
+Public mission and achievement definitions can be readable by authenticated users.
+
+Users must not be able to arbitrarily update their total points or award themselves achievements.
+
+Award points through trusted backend logic.
+
+Make reward operations idempotent and transactional.
+
+---
+
+# 9. STORAGE
+
+Create appropriate storage buckets:
+
+- `discovery-photos`: private user discovery photographs.
+- `avatars`: controlled profile image storage.
+- `mossy-assets`: public static application illustrations where appropriate.
+
+Use secure access policies and signed URLs for private images.
+
+Remove image EXIF metadata before external image processing when practical, especially GPS metadata.
+
+Do not unnecessarily retain temporary uploaded images.
+
+---
+
+# 10. FLUTTER PROJECT STRUCTURE
+
+Use a clean feature-based architecture.
+
+Suggested structure:
+
+lib/
+  main.dart
+  app.dart
+
+  core/
+    constants/
+    theme/
+    router/
+    errors/
+    utils/
+    widgets/
+
+  features/
+    onboarding/
+    authentication/
+    home/
+    explore/
+      data/
+      domain/
+      presentation/
+    collection/
+    adventures/
+    garden/
+    profile/
+    discovery_map/
+    settings/
+
+  services/
+    supabase_service.dart
+    camera_service.dart
+    location_service.dart
+    notification_service.dart
+
+  shared/
+    models/
+    providers/
+    widgets/
+
+assets/
+  images/
+  mascot/
+  illustrations/
+  animations/
+  icons/
+
+supabase/
+  migrations/
+  functions/
+
+test/
+
+Organize files logically.
+
+Do not put the entire application inside one large Dart file.
+
+Keep business logic out of UI widgets.
+
+Create reusable components.
+
+Use proper loading, success, error, and empty states.
+
+---
+
+# 11. IMPORTANT FLUTTER PACKAGES
+
+Use compatible versions of packages such as:
+
+- flutter_riverpod
+- go_router
+- supabase_flutter
+- image_picker
+- geolocator
+- flutter_map
+- latlong2
+- cached_network_image
+- lottie
+- flutter_animate
+- permission_handler
+- uuid
+- intl
+
+Do not install packages unnecessarily.
+
+Check package compatibility before using them.
+
+Use Flutter's built-in capabilities whenever sufficient.
+
+---
+
+# 12. ANIMATIONS AND MICRO-INTERACTIONS
+
+The application should feel alive.
+
+Implement lightweight animations:
+
+- Splash: mascot entrance.
+- Home: subtle mascot movement.
+- Explore: magnifying glass animation.
+- Identification success: discovery card entrance.
+- Saving discovery: flower bloom or satisfying feedback.
+- Mission completion: celebratory animation.
+- Achievement unlock: badge reveal.
+- Garden: visible growth or unlock animation.
+- Navigation: smooth transitions.
+
+Use Lottie, Flutter Animate, or native Flutter animations where appropriate.
+
+Animations must remain performant on ordinary devices.
+
+Respect reduced-motion preferences where possible.
+
+---
+
+# 13. LOCALIZATION
+
+Prepare the application for localization.
+
+Initially support:
+- English.
+- French.
+
+Use Flutter localization conventions rather than scattering hardcoded strings throughout the application.
+
+Keep the default language configurable.
+
+---
+
+# 14. DEVELOPMENT CONSTRAINTS
+
+The development environment is:
+
+- Windows 11.
+- Flutter and Dart installed.
+- HP EliteBook 840 G8.
+- 15 GB RAM.
+- No dedicated GPU.
+- Limited disk space.
+- No Mac available.
+
+Important consequences:
+
+1. Do not require Android Studio.
+2. Do not require a local iOS build.
+3. Do not require a local GPU.
+4. Avoid unnecessarily large dependencies.
+5. Prefer lightweight assets and animations.
+6. Ensure the project can run on Flutter Web for fast development and preview.
+7. Keep iOS compatibility in mind.
+8. Do not introduce unnecessary native dependencies.
+
+The iOS application will be built remotely using GitHub Actions with a macOS runner.
+
+Prepare the project so that a GitHub Actions workflow can build the iOS application later.
+
+Do not make the project dependent on Android-only functionality.
+
+Use platform checks for camera, location, and other platform-specific features.
+
+---
+
+# 15. DEMO MODE AND REAL INTEGRATIONS
+
+This is extremely important.
+
+The project must be usable even before I configure API credentials.
+
+Implement a clear configuration strategy:
+
+- If Supabase and external API credentials are configured, use the real backend.
+- If they are not configured, allow a clearly labeled demo mode.
+- Demo mode should use realistic sample discoveries and sample challenges.
+- Demo mode must never pretend that a mock identification came from Pl@ntNet.
+- Keep demo services separate from production services.
+
+Provide an `.env.example` or equivalent configuration template.
+
+Never commit real API keys.
+
+Provide clear instructions for configuring:
+- Supabase URL.
+- Supabase anon key.
+- Pl@ntNet API key.
+- Gemini API key.
+
+The Flutter client should only receive public client configuration, never private external API credentials.
+
+If Edge Functions cannot be deployed automatically, create the complete function code and document the exact deployment commands.
+
+---
+
+# 16. QUALITY AND TESTING
+
+Do not stop after creating the UI.
+
+Implement and test the main user journeys.
+
+Required journeys:
+
+1. Open the application.
+2. Complete onboarding or enter demo mode.
+3. Navigate between all main sections.
+4. Select a plant photograph.
+5. Run identification in demo mode or through the real API.
+6. Display identification candidates.
+7. Generate or retrieve educational content.
+8. Save a discovery.
+9. Display the saved discovery in Collection.
+10. Open its details.
+11. Complete a challenge.
+12. Award points exactly once.
+13. Update garden progression.
+14. Display profile statistics.
+
+Test edge cases:
+
+- Invalid image.
+- Unsupported file.
+- Blurry or uncertain identification.
+- API unavailable.
+- Network error.
+- Gemini quota exceeded.
+- Empty collection.
+- Permission denied.
+- Duplicate mission completion.
+- User not authenticated.
+- Missing backend configuration.
+
+Run:
+
+- `flutter pub get`
+- `dart format`
+- `flutter analyze`
+- `flutter test`
+
+Fix all errors that can reasonably be fixed.
+
+Do not claim tests passed if they were not actually executed.
+
+---
+
+# 17. README AND PROJECT DOCUMENTATION
+
+Create a complete README.md containing:
+
+- Project description.
+- Features.
+- Screenshots section with placeholders if screenshots do not exist.
+- Architecture overview.
+- Technology stack.
+- Folder structure.
+- Prerequisites.
+- Installation instructions.
+- Flutter Web launch command.
+- Supabase setup.
+- API configuration.
+- Edge Function deployment instructions.
+- Database migration instructions.
+- Testing instructions.
+- iOS GitHub Actions build instructions.
+- Known limitations.
+
+Also create:
+
+`PROJECT_CONTEXT.md`
+
+This file must document:
+- Product vision.
+- Product decisions.
+- Technical architecture.
+- Database design.
+- API integrations.
+- Folder structure.
+- Environment variables.
+- Development conventions.
+- Implemented features.
+- Remaining work.
+- Known bugs.
+
+This file will be used as the project's persistent development context in future sessions.
+
+---
+
+# 18. IMPLEMENTATION PRIORITIES
+
+Build the application in this order.
+
+### Priority 1 — Working foundation
+
+- Flutter project setup.
+- Theme and design system.
+- Navigation.
+- Splash.
+- Onboarding.
+- Home.
+- Explore.
+- Collection.
+- Adventures.
+- Garden.
+- Demo mode.
+
+### Priority 2 — Real application functionality
+
+- Supabase configuration.
+- Authentication.
+- Database migrations.
+- Image upload.
+- Pl@ntNet integration.
+- Gemini integration.
+- Save discoveries.
+- Retrieve collection.
+- Persist user progress.
+
+### Priority 3 — Engagement
+
+- Missions.
+- Verification.
+- Points.
+- Achievements.
+- Garden progression.
+- Mascot evolution.
+
+### Priority 4 — Additional features
+
+- Discovery map.
+- Notifications.
+- Additional customization.
+- Further localization.
+
+Do not sacrifice a working core application to implement secondary features.
+
+---
+
+# 19. FINAL EXECUTION INSTRUCTIONS
+
+Start by inspecting the current working directory.
+
+If the project is empty, create the Flutter project.
+
+If a Flutter project already exists, inspect it and preserve useful existing work.
+
+Then implement the complete application.
+
+Do not stop at a plan, architecture diagram, or list of recommended files.
+
+Actually write the code.
+
+Do not ask me to approve every implementation decision.
+
+If an external credential or service is unavailable, implement the integration, create a demo fallback, and document the exact configuration required.
+
+Do not leave buttons that look functional but do nothing.
+
+Do not leave TODO comments for essential MVP functionality.
+
+Do not replace the requested product with a generic template.
+
+Keep the code maintainable, modular, and understandable.
+
+At the end:
+
+1. Run dependency installation.
+2. Run formatting.
+3. Run static analysis.
+4. Run tests.
+5. Fix errors.
+6. Verify Flutter Web can launch if supported by the environment.
+7. Provide a concise implementation report.
+
+The report must include:
+- What was implemented.
+- Main screens created.
+- Features that work.
+- Real integrations completed.
+- Features currently using demo data.
+- Commands to run the application.
+- Credentials or external configuration still required.
+- Tests actually executed and their results.
+- Any remaining blockers.
+
+**FINAL GOAL: Deliver a beautiful, coherent, functional first version of Mossy — an AI-powered nature exploration application that feels like a real product, not a university prototype made of disconnected screens.**
+
+Now start building. Do not just tell me how.
+
+
+
+
+supabase pass: mossyapp061599

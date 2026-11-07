@@ -1,0 +1,156 @@
+{
+  "@@locale": "fr",
+  "appName": "Mossy",
+  "tagline": "Regardez de plus près. Découvrez davantage.",
+  
+  "goodMorning": "Bonjour, Explorateur !",
+  "goodAfternoon": "Bon après-midi, Explorateur !",
+  "goodEvening": "Bonsoir, Explorateur !",
+  
+  "home": "Accueil",
+  "explore": "Explorer",
+  "collection": "Collection",
+  "adventures": "Aventures",
+  "garden": "Jardin",
+  
+  "discoverPlant": "Découvrir une plante",
+  "takePhoto": "Prendre une photo",
+  "chooseFromGallery": "Choisir de la galerie",
+  "identifyPlant": "Identifier cette plante",
+  "retake": "Reprendre",
+  "chooseAnother": "Choisir une autre",
+  
+  "saveToCollection": "Enregistrer dans la collection",
+  "learnMore": "En savoir plus",
+  "identifyAnother": "Identifier une autre",
+  
+  "dailyChallenge": "Défi du jour",
+  "recentDiscoveries": "Découvertes récentes",
+  "yourGarden": "Votre jardin",
+  "achievements": "Succès",
+  
+  "myCollection": "Ma Collection",
+  "searchPlants": "Rechercher des plantes...",
+  "all": "Tout",
+  "favorites": "Favoris",
+  "byFamily": "Par famille",
+  "noDiscoveries": "Aucune découverte",
+  "startExploring": "Commencez à explorer pour enrichir votre collection !",
+  "totalSpecies": "Espèces totales",
+  "favoritesCount": "Favoris",
+  
+  "daily": "Quotidien",
+  "challenges": "Défis",
+  "completed": "Terminé",
+  "easy": "Facile",
+  "medium": "Moyen",
+  "hard": "Difficile",
+  "startMission": "Commencer la mission",
+  "submitDiscovery": "Soumettre la découverte",
+  "points": "{count} pts",
+  "@points": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  
+  "gardenLevel": "Jardin niveau {level}",
+  "@gardenLevel": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "growYourGarden": "Comment faire pousser votre jardin",
+  "gardenTip": "Identifiez des plantes, complétez des aventures et gagnez des succès pour faire pousser votre jardin !",
+  
+  "profile": "Profil",
+  "explorerLevel": "Niveau d'explorateur {level}",
+  "@explorerLevel": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "totalPoints": "Points totaux",
+  "totalDiscoveries": "Découvertes totales",
+  "adventuresComplete": "Aventures terminées",
+  "daysActive": "Jours actifs",
+  
+  "settings": "Paramètres",
+  "language": "Langue",
+  "notifications": "Notifications",
+  "locationPermissions": "Permissions de localisation",
+  "about": "À propos",
+  "privacy": "Informations de confidentialité",
+  "signOut": "Se déconnecter",
+  "deleteAccount": "Supprimer le compte",
+  
+  "discoveryMap": "Carte des découvertes",
+  "noLocations": "Aucune découverte avec données de localisation",
+  
+  "demoMode": "Mode démo",
+  "demoModeDescription": "Vous explorez en mode démo. Configurez Supabase pour sauvegarder vos découvertes.",
+  
+  "loading": "Chargement...",
+  "error": "Quelque chose s'est mal passé",
+  "retry": "Réessayer",
+  "cancel": "Annuler",
+  "save": "Enregistrer",
+  "delete": "Supprimer",
+  "edit": "Modifier",
+  "confirm": "Confirmer",
+  
+  "onboarding1Title": "Découvrez les plantes autour de vous",
+  "onboarding1Desc": "Pointez votre appareil photo vers n'importe quelle plante et laissez Mossy l'identifier grâce à l'IA.",
+  "onboarding2Title": "Apprenez des faits fascinants",
+  "onboarding2Desc": "Obtenez des faits intéressants, des conseils d'observation et du contenu éducatif sur chaque plante découverte.",
+  "onboarding3Title": "Collectionnez et complétez des aventures",
+  "onboarding3Desc": "Construisez votre journal de nature personnel et relevez des défis d'exploration passionnants.",
+  "onboarding4Title": "Faites pousser votre jardin virtuel",
+  "onboarding4Desc": "Regardez votre jardin fleurir à mesure que vous explorez le monde naturel.",
+  "skip": "Passer",
+  "next": "Suivant",
+  "getStarted": "Commencer",
+  
+  "lookingClosely": "Examinons votre découverte de près...",
+  "searchingBotanical": "Recherche dans le monde botanique...",
+  "consultingEncyclopedia": "Consultation de l'encyclopédie des plantes...",
+  "preparingSomething": "Préparation de quelque chose d'intéressant...",
+  "almostThere": "Presque terminé...",
+  
+  "veryLikely": "Très probable",
+  "likely": "Probable",
+  "possible": "Possible",
+  "uncertain": "Incertain",
+  
+  "scientificName": "Nom scientifique",
+  "commonName": "Nom commun",
+  "family": "Famille",
+  "discoveredOn": "Découvert le {date}",
+  "@discoveredOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "personalNotes": "Notes personnelles",
+  "addNotes": "Ajoutez vos notes personnelles...",
+  "funFacts": "Faits amusants",
+  "observationTips": "Conseils d'observation",
+  "safetyNote": "Note de sécurité",
+  "introduction": "Introduction",
+  "description": "Description",
+  "otherCandidates": "Autres correspondances possibles",
+  
+  "photoTips": "Conseils photo",
+  "photoTip1": "Approchez-vous de la plante",
+  "photoTip2": "Incluez feuilles et fleurs",
+  "photoTip3": "Utilisez un bon éclairage",
+  "photoTip4": "Évitez les photos floues"
+}
