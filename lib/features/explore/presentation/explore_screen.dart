@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/mossy_card.dart';
 import '../../../shared/models/discovery.dart';
@@ -13,24 +14,119 @@ import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/widgets/mascot/mascot_expression.dart';
 import '../../../shared/widgets/mascot/mascot_with_accessory.dart';
 
-final _currentImageProvider = StateProvider<XFile?>((ref) => null);
-final _identifyingProvider = StateProvider<bool>((ref) => false);
-final _identificationResultProvider = StateProvider<IdentificationResult?>((ref) => null);
+// ============================================================================
+// EXPLORE STATE & NOTIFIER
+// ============================================================================
+
+class ExploreState {
+  final XFile? currentImage;
+  final bool isIdentifying;
+  final IdentificationResult? result;
+  final String? errorMessage;
+
+  const ExploreState({
+    this.currentImage,
+    this.isIdentifying = false,
+    this.result,
+    this.errorMessage,
+  });
+
+  ExploreState copyWith({
+    XFile? currentImage,
+    bool clearImage = false,
+    bool? isIdentifying,
+    IdentificationResult? result,
+    bool clearResult = false,
+    String? errorMessage,
+    bool clearError = false,
+  }) {
+    return ExploreState(
+      currentImage: clearImage ? null : (currentImage ?? this.currentImage),
+      isIdentifying: isIdentifying ?? this.isIdentifying,
+      result: clearResult ? null : (result ?? this.result),
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+    );
+  }
+}
+
+class ExploreNotifier extends StateNotifier<ExploreState> {
+  final Ref _ref;
+
+  ExploreNotifier(this._ref) : super(const ExploreState());
+
+  void setImage(XFile? file) {
+    state = state.copyWith(
+      currentImage: file,
+      clearResult: true,
+      clearError: true,
+      isIdentifying: false,
+    );
+  }
+
+  void reset() {
+    state = const ExploreState();
+  }
+
+  Future<void> identify() async {
+    final image = state.currentImage;
+    if (image == null) return;
+
+    state = state.copyWith(isIdentifying: true, clearError: true);
+
+    try {
+      final service = _ref.read(plantIdentificationServiceProvider);
+      final bytes = await image.readAsBytes();
+      final result = await service.identifyPlant(bytes, image.name);
+
+      state = state.copyWith(
+        isIdentifying: false,
+        result: result,
+        clearError: true,
+      );
+    } catch (e) {
+      debugPrint('[Mossy] Identification failed: $e');
+      state = state.copyWith(
+        isIdentifying: false,
+        errorMessage: 'Identification failed: $e',
+      );
+    }
+  }
+}
+
+final exploreProvider =
+    StateNotifierProvider<ExploreNotifier, ExploreState>((ref) {
+  return ExploreNotifier(ref);
+});
+
+// ============================================================================
+// EXPLORE SCREEN ROOT
+// ============================================================================
 
 class ExploreScreen extends ConsumerWidget {
   const ExploreScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isIdentifying = ref.watch(_identifyingProvider);
-    if (isIdentifying) return const _IdentificationLoadingScreen();
+    final exploreState = ref.watch(exploreProvider);
 
-    final result = ref.watch(_identificationResultProvider);
-    final currentImage = ref.watch(_currentImageProvider);
-    if (result != null && currentImage != null) {
-      return _IdentificationResultScreen(result: result, imageFile: currentImage);
+    if (exploreState.isIdentifying) {
+      return const _IdentificationLoadingScreen();
     }
-    if (currentImage != null) return _ImagePreviewScreen(imageFile: currentImage);
+
+    if (exploreState.result != null && exploreState.currentImage != null) {
+      return _IdentificationResultScreen(
+        result: exploreState.result!,
+        imageFile: exploreState.currentImage!,
+      );
+    }
+
+    if (exploreState.currentImage != null) {
+      return _ImagePreviewScreen(
+        imageFile: exploreState.currentImage!,
+        errorMessage: exploreState.errorMessage,
+      );
+    }
+
     return const _ExploreHomeScreen();
   }
 }
@@ -44,8 +140,9 @@ class _ExploreHomeScreen extends ConsumerWidget {
     final XFile? file = fromCamera
         ? await cameraService.pickFromCamera()
         : await cameraService.pickFromGallery();
+
     if (file != null) {
-      ref.read(_currentImageProvider.notifier).state = file;
+      ref.read(exploreProvider.notifier).setImage(file);
     } else if (cameraService.lastError != null && ctx.mounted) {
       ScaffoldMessenger.of(ctx).showSnackBar(
         SnackBar(
@@ -83,58 +180,76 @@ class _ExploreHomeScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('Discover Nature',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700, color: AppColors.darkGreen)),
+              Text(
+                'Discover Nature',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.darkGreen,
+                    ),
+              ),
               const SizedBox(height: 6),
-              Text('Take a photo of any plant to identify it',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.secondaryText)),
+              Text(
+                'Take a photo of any plant to identify it',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.secondaryText,
+                    ),
+              ),
               const SizedBox(height: 28),
-              Row(children: [
-                Expanded(
-                  child: _ActionCard(
-                    icon: Icons.camera_alt_rounded,
-                    label: 'Take a Photo',
-                    color: AppColors.sageGreen,
-                    onTap: () => _pickImage(context, ref, fromCamera: true),
-                  ).animate().slideX(begin: -0.3, delay: 400.ms),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: _ActionCard(
-                    icon: Icons.photo_library_rounded,
-                    label: 'From Gallery',
-                    color: AppColors.lavender,
-                    iconColor: AppColors.darkGreen,
-                    textColor: AppColors.darkGreen,
-                    onTap: () => _pickImage(context, ref, fromCamera: false),
-                  ).animate().slideX(begin: 0.3, delay: 400.ms),
-                ),
-              ]),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ActionCard(
+                      icon: Icons.camera_alt_rounded,
+                      label: 'Take a Photo',
+                      color: AppColors.sageGreen,
+                      onTap: () => _pickImage(context, ref, fromCamera: true),
+                    ).animate().slideX(begin: -0.3, delay: 400.ms),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: _ActionCard(
+                      icon: Icons.photo_library_rounded,
+                      label: 'From Gallery',
+                      color: AppColors.lavender,
+                      iconColor: AppColors.darkGreen,
+                      textColor: AppColors.darkGreen,
+                      onTap: () => _pickImage(context, ref, fromCamera: false),
+                    ).animate().slideX(begin: 0.3, delay: 400.ms),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
               MossyCard(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    const Icon(Icons.lightbulb_outline_rounded, color: AppColors.butterYellow, size: 20),
-                    const SizedBox(width: 8),
-                    Text('Photo Tips',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                  ]),
-                  const SizedBox(height: 10),
-                  for (final tip in [
-                    '📏  Include leaves, flowers, and stems',
-                    '☀️  Use natural light when possible',
-                    '📐  Fill the frame with the plant',
-                    '🔍  Avoid blurry or dark images',
-                  ])
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 5),
-                      child: Text(tip,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.secondaryText)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.lightbulb_outline_rounded, color: AppColors.butterYellow, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Photo Tips',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ],
                     ),
-                ]),
+                    const SizedBox(height: 10),
+                    for (final tip in [
+                      '📏  Include leaves, flowers, and stems',
+                      '☀️  Use natural light when possible',
+                      '📐  Fill the frame with the plant',
+                      '🔍  Avoid blurry or dark images',
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 5),
+                        child: Text(
+                          tip,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.secondaryText),
+                        ),
+                      ),
+                  ],
+                ),
               ).animate().fadeIn(delay: 500.ms),
             ],
           ),
@@ -151,9 +266,14 @@ class _ActionCard extends StatelessWidget {
   final Color iconColor;
   final Color textColor;
   final VoidCallback onTap;
+
   const _ActionCard({
-    required this.icon, required this.label, required this.color, required this.onTap,
-    this.iconColor = Colors.white, this.textColor = Colors.white,
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.iconColor = Colors.white,
+    this.textColor = Colors.white,
   });
 
   @override
@@ -165,103 +285,146 @@ class _ActionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: color.withAlpha(80), blurRadius: 12, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: color.withAlpha(80),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 36, color: iconColor),
-          const SizedBox(height: 10),
-          Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: 14)),
-        ]),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 36, color: iconColor),
+            const SizedBox(height: 10),
+            Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: 14)),
+          ],
+        ),
       ),
     );
   }
 }
 
 // ─── Image Preview ────────────────────────────────────────────────────────────
-class _ImagePreviewScreen extends ConsumerStatefulWidget {
+class _ImagePreviewScreen extends ConsumerWidget {
   final XFile imageFile;
-  const _ImagePreviewScreen({required this.imageFile});
-  @override
-  ConsumerState<_ImagePreviewScreen> createState() => _ImagePreviewScreenState();
-}
+  final String? errorMessage;
 
-class _ImagePreviewScreenState extends ConsumerState<_ImagePreviewScreen> {
-  Future<void> _identify() async {
-    ref.read(_identifyingProvider.notifier).state = true;
-    try {
-      final service = ref.read(plantIdentificationServiceProvider);
-      final bytes = await widget.imageFile.readAsBytes();
-      final result = await service.identifyPlant(bytes, widget.imageFile.name);
-      ref.read(_identificationResultProvider.notifier).state = result;
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Identification failed: $e'), backgroundColor: AppColors.error),
-        );
-      }
-    } finally {
-      if (mounted) ref.read(_identifyingProvider.notifier).state = false;
-    }
-  }
+  const _ImagePreviewScreen({
+    required this.imageFile,
+    this.errorMessage,
+  });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.transparent, foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => ref.read(_currentImageProvider.notifier).state = null,
+          onPressed: () => ref.read(exploreProvider.notifier).reset(),
         ),
         title: const Text('Preview'),
       ),
-      body: Column(children: [
-        Expanded(child: Image.file(File(widget.imageFile.path), fit: BoxFit.contain)),
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: AppColors.cream,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(children: [
-            Text('Ready to identify!',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppColors.darkGreen)),
-            const SizedBox(height: 6),
-            Text('Our AI will analyse your photo',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.secondaryText)),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity, height: 52,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.search_rounded),
-                label: const Text('Identify This Plant'),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.sageGreen, foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                onPressed: _identify,
+      body: Column(
+        children: [
+          Expanded(
+            child: Image.file(
+              File(imageFile.path),
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Center(
+                child: Icon(Icons.broken_image_rounded, color: Colors.white54, size: 64),
               ),
             ),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: () => ref.read(_currentImageProvider.notifier).state = null,
-              child: const Text('Choose Another'),
+          ),
+          if (errorMessage != null)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.errorLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.error),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      errorMessage!,
+                      style: const TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ]),
-        ),
-      ]),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: AppColors.cream,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  'Ready to identify!',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.darkGreen,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Our AI will analyse your photo',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.secondaryText,
+                      ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.search_rounded),
+                    label: const Text('Identify This Plant'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.sageGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () => ref.read(exploreProvider.notifier).identify(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => ref.read(exploreProvider.notifier).reset(),
+                  child: const Text('Choose Another'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 // ─── Loading Screen ───────────────────────────────────────────────────────────
-class _IdentificationLoadingScreen extends StatefulWidget {
+class _IdentificationLoadingScreen extends ConsumerStatefulWidget {
   const _IdentificationLoadingScreen();
+
   @override
-  State<_IdentificationLoadingScreen> createState() => _LoadingState();
+  ConsumerState<_IdentificationLoadingScreen> createState() => _LoadingState();
 }
 
-class _LoadingState extends State<_IdentificationLoadingScreen> {
+class _LoadingState extends ConsumerState<_IdentificationLoadingScreen> {
   static const _messages = [
     'Looking closely at your discovery...',
     'Searching the botanical world...',
@@ -270,6 +433,7 @@ class _LoadingState extends State<_IdentificationLoadingScreen> {
     'Almost there...',
   ];
   int _msgIndex = 0;
+  bool _disposed = false;
 
   @override
   void initState() {
@@ -277,9 +441,15 @@ class _LoadingState extends State<_IdentificationLoadingScreen> {
     _cycle();
   }
 
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
   void _cycle() {
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
+      if (!_disposed && mounted) {
         setState(() => _msgIndex = (_msgIndex + 1) % _messages.length);
         _cycle();
       }
@@ -291,30 +461,47 @@ class _LoadingState extends State<_IdentificationLoadingScreen> {
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const MascotWithAccessory(
-            expression: MascotExpression.curious,
-            accessory: MascotAccessory.magnifyingGlass,
-            size: 150,
-          ),
-          const SizedBox(height: 32),
-          const SizedBox(
-            width: 48, height: 48,
-            child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.sageGreen),
-          ),
-          const SizedBox(height: 24),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 400),
-            child: Padding(
-              key: ValueKey(_msgIndex),
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(_messages[_msgIndex],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const MascotWithAccessory(
+              expression: MascotExpression.curious,
+              accessory: MascotAccessory.magnifyingGlass,
+              size: 150,
+            ),
+            const SizedBox(height: 32),
+            const SizedBox(
+              width: 48,
+              height: 48,
+              child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.sageGreen),
+            ),
+            const SizedBox(height: 24),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              child: Padding(
+                key: ValueKey(_msgIndex),
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  _messages[_msgIndex],
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.secondaryText, fontStyle: FontStyle.italic)),
+                        color: AppColors.secondaryText,
+                        fontStyle: FontStyle.italic,
+                      ),
+                ),
+              ),
             ),
-          ),
-        ]),
+            const SizedBox(height: 32),
+            TextButton.icon(
+              icon: const Icon(Icons.close_rounded, size: 16),
+              label: const Text('Cancel'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.secondaryText),
+              onPressed: () {
+                ref.read(exploreProvider.notifier).reset();
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -324,7 +511,11 @@ class _LoadingState extends State<_IdentificationLoadingScreen> {
 class _IdentificationResultScreen extends ConsumerWidget {
   final IdentificationResult result;
   final XFile imageFile;
-  const _IdentificationResultScreen({required this.result, required this.imageFile});
+
+  const _IdentificationResultScreen({
+    required this.result,
+    required this.imageFile,
+  });
 
   Color _confidenceColor(double s) {
     if (s >= 0.7) return AppColors.success;
@@ -339,11 +530,6 @@ class _IdentificationResultScreen extends ConsumerWidget {
     return 'Uncertain';
   }
 
-  void _reset(WidgetRef ref) {
-    ref.read(_currentImageProvider.notifier).state = null;
-    ref.read(_identificationResultProvider.notifier).state = null;
-  }
-
   Future<void> _saveDiscovery(BuildContext context, WidgetRef ref, PlantCandidate candidate) async {
     try {
       final auth = ref.read(authProvider);
@@ -352,8 +538,12 @@ class _IdentificationResultScreen extends ConsumerWidget {
       final discoveryNotifier = ref.read(discoveriesProvider.notifier);
 
       final aiContent = await aiService.generateContent(
-        candidate.scientificName, candidate.commonName, candidate.family, 'en',
+        candidate.scientificName,
+        candidate.commonName,
+        candidate.family,
+        'en',
       );
+
       final discovery = Discovery(
         id: 'disc-${DateTime.now().millisecondsSinceEpoch}',
         userId: userId,
@@ -366,13 +556,18 @@ class _IdentificationResultScreen extends ConsumerWidget {
         identificationScore: candidate.score,
         aiContent: aiContent,
       );
+
       await discoveryNotifier.addDiscovery(discovery);
       await ref.read(userProfileProvider.notifier).addPoints(15, 'plant_identified');
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('🌿 Discovery saved! +15 points'), backgroundColor: AppColors.sageGreen),
+          const SnackBar(
+            content: Text('🌿 Discovery saved! +15 points'),
+            backgroundColor: AppColors.sageGreen,
+          ),
         );
-        _reset(ref);
+        ref.read(exploreProvider.notifier).reset();
       }
     } catch (e) {
       if (context.mounted) {
@@ -386,105 +581,173 @@ class _IdentificationResultScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final best = result.bestMatch;
+
     return Scaffold(
       backgroundColor: AppColors.cream,
-      body: CustomScrollView(slivers: [
-        SliverAppBar(
-          expandedHeight: 240,
-          pinned: true,
-          backgroundColor: AppColors.cream,
-          foregroundColor: AppColors.darkGreen,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => _reset(ref),
-          ),
-          title: const Text('Identification Result'),
-          flexibleSpace: FlexibleSpaceBar(
-            background: Stack(fit: StackFit.expand, children: [
-              Image.file(File(imageFile.path), fit: BoxFit.cover),
-              Container(decoration: BoxDecoration(
-                gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, AppColors.cream.withAlpha(230)]),
-              )),
-            ]),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.all(20),
-          sliver: SliverList(delegate: SliverChildListDelegate([
-            if (best != null) ...[
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(
-                    best.commonName.isNotEmpty ? best.commonName : best.scientificName,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w800, color: AppColors.darkGreen),
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 240,
+            pinned: true,
+            backgroundColor: AppColors.cream,
+            foregroundColor: AppColors.darkGreen,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded),
+              onPressed: () => ref.read(exploreProvider.notifier).reset(),
+            ),
+            title: const Text('Identification Result'),
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.file(File(imageFile.path), fit: BoxFit.cover),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, AppColors.cream.withAlpha(230)],
+                      ),
+                    ),
                   ),
-                  Text(best.scientificName,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontStyle: FontStyle.italic, color: AppColors.secondaryText)),
-                  if (best.family.isNotEmpty)
-                    Text('Family: ${best.family}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText)),
-                ])),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                      color: _confidenceColor(best.score).withAlpha(30),
-                      borderRadius: BorderRadius.circular(10)),
-                  child: Column(children: [
-                    Text(_confidenceLabel(best.score),
-                        style: TextStyle(color: _confidenceColor(best.score), fontWeight: FontWeight.w700, fontSize: 12)),
-                    Text('${(best.score * 100).toStringAsFixed(0)}%',
-                        style: TextStyle(color: _confidenceColor(best.score), fontSize: 11)),
-                  ]),
-                ),
-              ]),
-              const SizedBox(height: 20),
-            ],
-            if (result.candidates.length > 1) ...[
-              Text('Other possibilities',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              ...result.candidates.skip(1).take(3).map((c) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                    color: Colors.white, borderRadius: BorderRadius.circular(14),
-                    boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 6)]),
-                child: Row(children: [
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(c.commonName.isNotEmpty ? c.commonName : c.scientificName,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                    Text(c.scientificName,
-                        style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 11, color: AppColors.secondaryText)),
-                  ])),
-                  const SizedBox(width: 8),
-                  Text('${(c.score * 100).toStringAsFixed(0)}%',
-                      style: const TextStyle(fontSize: 11, color: AppColors.secondaryText)),
-                ]),
-              )),
-              const SizedBox(height: 16),
-            ],
-            SizedBox(
-              width: double.infinity, height: 52,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.bookmark_add_rounded),
-                label: const Text('Save to Collection'),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.sageGreen, foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                onPressed: best != null ? () => _saveDiscovery(context, ref, best) : null,
+                ],
               ),
             ),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: () => _reset(ref),
-              child: const Text('Identify Another Plant'),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.all(20),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                if (best != null) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              best.commonName.isNotEmpty ? best.commonName : best.scientificName,
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.darkGreen,
+                                  ),
+                            ),
+                            Text(
+                              best.scientificName,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontStyle: FontStyle.italic,
+                                    color: AppColors.secondaryText,
+                                  ),
+                            ),
+                            if (best.family.isNotEmpty)
+                              Text(
+                                'Family: ${best.family}',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _confidenceColor(best.score).withAlpha(30),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              _confidenceLabel(best.score),
+                              style: TextStyle(
+                                color: _confidenceColor(best.score),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              '${(best.score * 100).toStringAsFixed(0)}%',
+                              style: TextStyle(color: _confidenceColor(best.score), fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                ],
+                if (result.candidates.length > 1) ...[
+                  Text(
+                    'Other possibilities',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  ...result.candidates.skip(1).take(3).map(
+                        (c) => Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 6),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      c.commonName.isNotEmpty ? c.commonName : c.scientificName,
+                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                    ),
+                                    Text(
+                                      c.scientificName,
+                                      style: const TextStyle(
+                                        fontStyle: FontStyle.italic,
+                                        fontSize: 11,
+                                        color: AppColors.secondaryText,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${(c.score * 100).toStringAsFixed(0)}%',
+                                style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  const SizedBox(height: 16),
+                ],
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.bookmark_add_rounded),
+                    label: const Text('Save to Collection'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.sageGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: best != null ? () => _saveDiscovery(context, ref, best) : null,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => ref.read(exploreProvider.notifier).reset(),
+                  child: const Text('Identify Another Plant'),
+                ),
+              ]),
             ),
-          ])),
-        ),
-      ]),
+          ),
+        ],
+      ),
     );
   }
 }

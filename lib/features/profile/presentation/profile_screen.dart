@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/mossy_card.dart';
+import '../../../shared/models/achievement.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/auth_provider.dart';
 
@@ -55,12 +56,29 @@ class ProfileScreen extends ConsumerWidget {
                     Text(profile.username, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                     Text('Explorer Level ${profile.explorerLevel}',
                         style: const TextStyle(color: AppColors.sageGreen, fontWeight: FontWeight.w600)),
-                    if (authState.isDemoMode)
-                      Container(
-                        margin: const EdgeInsets.only(top: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(color: AppColors.butterYellow.withAlpha(60), borderRadius: BorderRadius.circular(8)),
-                        child: const Text('Demo Mode', style: TextStyle(fontSize: 11, color: AppColors.darkGreen)),
+                    if (authState.isGuest || authState.isDemoMode)
+                      GestureDetector(
+                        onTap: () => context.push('/auth'),
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.butterYellow.withAlpha(80),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.butterYellow),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                authState.isGuest ? 'Guest Mode (Sign in)' : 'Demo Mode (Sign in)',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.arrow_forward_ios_rounded, size: 9, color: AppColors.darkGreen),
+                            ],
+                          ),
+                        ),
                       ),
                   ])),
                 ]),
@@ -163,12 +181,12 @@ class _StatCard extends StatelessWidget {
 }
 
 class _AchievementBadge extends StatelessWidget {
-  final dynamic achievement;
+  final Achievement achievement;
   const _AchievementBadge({required this.achievement});
 
   @override
   Widget build(BuildContext context) {
-    final unlocked = achievement.isUnlocked as bool? ?? false;
+    final unlocked = achievement.isUnlocked;
     return Container(
       decoration: BoxDecoration(
         color: unlocked ? AppColors.mintGreen.withAlpha(60) : AppColors.disabledBackground.withAlpha(80),
@@ -190,7 +208,7 @@ class _AchievementBadge extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          achievement.name as String? ?? '',
+          achievement.title,
           textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
           style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
               color: unlocked ? AppColors.darkGreen : AppColors.mutedText),

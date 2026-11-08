@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/adventures/presentation/adventures_screen.dart';
+import '../../features/auth/presentation/auth_screen.dart';
 import '../../features/collection/presentation/collection_screen.dart';
 import '../../features/discovery_map/presentation/discovery_map_screen.dart';
 import '../../features/explore/presentation/explore_screen.dart';
@@ -16,6 +17,7 @@ class AppRouter {
 
   static const String splashPath = '/splash';
   static const String onboardingPath = '/onboarding';
+  static const String authPath = '/auth';
   static const String homePath = '/home';
   static const String explorePath = '/explore';
   static const String collectionPath = '/collection';
@@ -30,6 +32,12 @@ class AppRouter {
     routes: [
       GoRoute(path: splashPath, builder: (_, __) => const SplashScreen()),
       GoRoute(path: onboardingPath, builder: (_, __) => const OnboardingScreen()),
+      GoRoute(
+        path: authPath,
+        builder: (_, state) => AuthScreen(
+          initialIsSignUp: state.uri.queryParameters['signup'] == 'true',
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => _MainScaffold(shell: shell),
         branches: [

@@ -53,12 +53,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  Future<void> _completeOnboarding() async {
+  Future<void> _completeOnboarding({bool toAuth = false}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_completed', true);
 
     if (!mounted) return;
-    context.go('/home');
+    if (toAuth) {
+      context.go('/auth');
+    } else {
+      context.go('/auth');
+    }
   }
 
   void _nextPage() {
@@ -68,7 +72,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeInOutCubic,
       );
     } else {
-      _completeOnboarding();
+      _completeOnboarding(toAuth: true);
     }
   }
 
@@ -105,21 +109,37 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   else
                     const SizedBox(width: 40),
 
-                  // Skip button (visible on pages 0 - 2)
-                  if (!isLastPage)
-                    TextButton(
-                      onPressed: _completeOnboarding,
-                      child: Text(
-                        'Skip',
-                        style: GoogleFonts.nunito(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.secondaryText,
+                  // Skip and Log in actions
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton(
+                        onPressed: () => _completeOnboarding(toAuth: true),
+                        child: Text(
+                          'Log In',
+                          style: GoogleFonts.nunito(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.sageGreen,
+                          ),
                         ),
                       ),
-                    )
-                  else
-                    const SizedBox(width: 48),
+                      if (!isLastPage) ...[
+                        const SizedBox(width: 4),
+                        TextButton(
+                          onPressed: () => _completeOnboarding(toAuth: false),
+                          child: Text(
+                            'Skip',
+                            style: GoogleFonts.nunito(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.secondaryText,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),

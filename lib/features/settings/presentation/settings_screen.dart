@@ -95,6 +95,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _sectionLabel('Account'),
           MossyCard(
             child: Column(children: [
+              if (!authState.isAuthenticated || authState.isGuest)
+                _ListTile(
+                  icon: Icons.login_rounded,
+                  title: 'Sign In / Register',
+                  subtitle: 'Sync discoveries across devices',
+                  titleColor: AppColors.sageGreen,
+                  onTap: () => context.push('/auth'),
+                )
+              else
+                _ListTile(
+                  icon: Icons.account_circle_outlined,
+                  title: 'Switch Account',
+                  subtitle: 'Currently signed in as ${profile?.username ?? 'Explorer'}',
+                  onTap: () => context.push('/auth'),
+                ),
+              _Divider(),
               _ListTile(
                 icon: Icons.logout_rounded,
                 title: 'Sign Out',
@@ -154,7 +170,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
     if (confirmed == true && context.mounted) {
       await ref.read(authProvider.notifier).signOut();
-      if (context.mounted) context.go('/onboarding');
+      if (context.mounted) context.go('/auth');
     }
   }
 

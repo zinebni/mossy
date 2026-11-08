@@ -88,11 +88,13 @@ class SupabaseService {
     }
 
     try {
-      final response = await client!.functions.invoke(
-        functionName,
-        body: body,
-        headers: headers,
-      );
+      final response = await client!.functions
+          .invoke(
+            functionName,
+            body: body,
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.status >= 200 && response.status < 300) {
         final data = response.data;
