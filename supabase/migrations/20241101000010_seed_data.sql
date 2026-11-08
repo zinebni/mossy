@@ -95,7 +95,7 @@ set
 insert into public.missions (id, title, description, category, difficulty, reward_points, verification_criteria, is_active)
 values
     (
-        'm1000000-0000-0000-0000-000000000001',
+        'b1000000-0000-0000-0000-000000000001',
         'Discover a yellow flower',
         'Spot and photograph any wild or garden flower with bright yellow petals, such as a dandelion, buttercup, or sunflower.',
         'daily',
@@ -110,7 +110,7 @@ values
         true
     ),
     (
-        'm1000000-0000-0000-0000-000000000002',
+        'b1000000-0000-0000-0000-000000000002',
         'Find a plant with 5 petals',
         'Observe nature closely and discover a flower featuring exactly five distinct petals (like a wild rose, strawberry, or periwinkle).',
         'general',
@@ -125,7 +125,7 @@ values
         true
     ),
     (
-        'm1000000-0000-0000-0000-000000000003',
+        'b1000000-0000-0000-0000-000000000003',
         'Discover a plant from the Asteraceae family',
         'Identify a member of the composite family (Asteraceae/Compositae) such as daisies, asters, chamomile, or marigolds.',
         'general',
@@ -140,7 +140,7 @@ values
         true
     ),
     (
-        'm1000000-0000-0000-0000-000000000004',
+        'b1000000-0000-0000-0000-000000000004',
         'Identify a tree species',
         'Look up! Identify a deciduous or coniferous tree species in a park, forest, or neighborhood sidewalk.',
         'general',
@@ -154,7 +154,7 @@ values
         true
     ),
     (
-        'm1000000-0000-0000-0000-000000000005',
+        'b1000000-0000-0000-0000-000000000005',
         'Find a purple flower',
         'Locate and capture a flower with calming purple, violet, or lavender blooms like lavender, bellflower, or lilac.',
         'daily',
@@ -169,7 +169,7 @@ values
         true
     ),
     (
-        'm1000000-0000-0000-0000-000000000006',
+        'b1000000-0000-0000-0000-000000000006',
         'Discover 3 different plant families',
         'Broaden your botanical horizons by identifying specimens from at least three distinct plant families in your journal.',
         'general',
@@ -183,7 +183,7 @@ values
         true
     ),
     (
-        'm1000000-0000-0000-0000-000000000007',
+        'b1000000-0000-0000-0000-000000000007',
         'Find a plant with interesting leaf shapes',
         'Discover and photograph a plant distinguished by unusual leaf margins, deep lobes, or heart-shaped foliage (e.g. ivy, ferns, oak, or monstera).',
         'general',
@@ -198,7 +198,7 @@ values
         true
     ),
     (
-        'm1000000-0000-0000-0000-000000000008',
+        'b1000000-0000-0000-0000-000000000008',
         'Identify a medicinal herb',
         'Find and record a recognized traditional culinary or medicinal herb, such as mint, thyme, rosemary, chamomile, or sage.',
         'special',

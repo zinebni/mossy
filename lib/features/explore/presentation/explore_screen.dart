@@ -44,7 +44,16 @@ class _ExploreHomeScreen extends ConsumerWidget {
     final XFile? file = fromCamera
         ? await cameraService.pickFromCamera()
         : await cameraService.pickFromGallery();
-    if (file != null) ref.read(_currentImageProvider.notifier).state = file;
+    if (file != null) {
+      ref.read(_currentImageProvider.notifier).state = file;
+    } else if (cameraService.lastError != null && ctx.mounted) {
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        SnackBar(
+          content: Text('Could not access ${fromCamera ? "camera" : "gallery"}: ${cameraService.lastError}'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   @override

@@ -4,6 +4,9 @@ import 'package:image_picker/image_picker.dart';
 /// Service wrapping [ImagePicker] for capturing photos or selecting from gallery.
 class CameraService {
   final ImagePicker _picker;
+  String? _lastError;
+
+  String? get lastError => _lastError;
 
   CameraService({ImagePicker? picker}) : _picker = picker ?? ImagePicker();
 
@@ -48,6 +51,7 @@ class CameraService {
     int? imageQuality = 85,
     CameraDevice preferredCameraDevice = CameraDevice.rear,
   }) async {
+    _lastError = null;
     try {
       final XFile? file = await _picker.pickImage(
         source: source,
@@ -58,6 +62,7 @@ class CameraService {
       );
       return file;
     } catch (e) {
+      _lastError = e.toString();
       debugPrint('[Mossy] CameraService error picking image: $e');
       return null;
     }
