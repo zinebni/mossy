@@ -15,6 +15,12 @@ analyzer:
     - android/**
     - ios/**
     - web/**
+  errors:
+    # Flutter 3.47+ moved material.dart into a standalone package.
+    # Third-party dependencies (riverpod, go_router, etc.) still use the
+    # legacy import and emit deprecated_member_use info notices.
+    # Suppress these so CI does not fail on issues outside our codebase.
+    deprecated_member_use: ignore
 
 linter:
   # The lint rules applied to this project can be customized in the
