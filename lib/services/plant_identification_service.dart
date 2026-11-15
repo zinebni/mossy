@@ -1,17 +1,186 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import '../shared/models/identification_result.dart';
 import '../shared/models/plant_candidate.dart';
-import 'supabase_service.dart';
 
 /// Abstract interface for plant identification providers.
 abstract class PlantIdentificationService {
   Future<IdentificationResult> identifyPlant(Uint8List imageBytes, String fileName);
 }
 
-/// Realistic demo implementation of [PlantIdentificationService] for offline/demo use.
-/// Returns curated, realistic botanical candidate pools with simulated delay.
+// ============================================================================
+// REAL PLANTNET API IMPLEMENTATION
+// ============================================================================
+
+/// Production implementation that calls the Pl@ntNet REST API directly.
+/// Requires a valid [apiKey] from https://my-api.plantnet.org
+class PlantNetIdentificationService implements PlantIdentificationService {
+  final String apiKey;
+
+  static const String _baseUrl = 'https://my-api.plantnet.org/v2/identify/all';
+  static const int _maxCandidates = 5;
+  static const Duration _timeout = Duration(seconds: 30);
+
+  PlantNetIdentificationService(this.apiKey);
+
+  @override
+  Future<IdentificationResult> identifyPlant(
+    Uint8List imageBytes,
+    String fileName,
+  ) async {
+    if (apiKey.isEmpty) {
+      debugPrint('[PlantNet] No API key — falling back to demo service.');
+      return await DemoPlantIdentificationService().identifyPlant(imageBytes, fileName);
+    }
+
+    try {
+      final uri = Uri.parse('$_baseUrl?api-key=$apiKey&nb-results=$_maxCandidates&lang=en');
+
+      final request = http.MultipartRequest('POST', uri);
+
+      // Determine MIME type from file extension
+      final ext = fileName.split('.').last.toLowerCase();
+      final mimeType = ext == 'png'
+          ? 'image/png'
+          : ext == 'webp'
+              ? 'image/webp'
+              : 'image/jpeg';
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'images',
+          imageBytes,
+          filename: fileName,
+        ),
+      );
+      request.fields['organs'] = 'auto';
+
+      debugPrint('[PlantNet] Sending ${imageBytes.length} bytes ($mimeType) to PlantNet API...');
+
+      final streamedResponse = await request.send().timeout(_timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      debugPrint('[PlantNet] Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return _parseSuccessResponse(response.body);
+      } else if (response.statusCode == 404) {
+        // 404 from PlantNet means no match found
+        return IdentificationResult(
+          status: IdentificationStatus.notFound,
+          candidates: const [],
+          bestMatch: null,
+          rawResponse: {'error': 'no_match', 'status': 404},
+        );
+      } else {
+        debugPrint('[PlantNet] API error ${response.statusCode}: ${response.body}');
+        return IdentificationResult(
+          status: IdentificationStatus.error,
+          candidates: const [],
+          bestMatch: null,
+          rawResponse: {
+            'error': 'api_error',
+            'status': response.statusCode,
+            'body': response.body,
+          },
+        );
+      }
+    } on Exception catch (e) {
+      debugPrint('[PlantNet] Exception during identification: $e');
+      return IdentificationResult(
+        status: IdentificationStatus.error,
+        candidates: const [],
+        bestMatch: null,
+        rawResponse: {'error': e.toString()},
+      );
+    }
+  }
+
+  IdentificationResult _parseSuccessResponse(String body) {
+    try {
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      final resultsRaw = json['results'] as List<dynamic>? ?? [];
+
+      final candidates = resultsRaw.map((raw) {
+        final r = raw as Map<String, dynamic>;
+        final species = r['species'] as Map<String, dynamic>? ?? {};
+        final family = species['family'] as Map<String, dynamic>? ?? {};
+        final commonNames = species['commonNames'] as List<dynamic>? ?? [];
+
+        final scientificName =
+            species['scientificNameWithoutAuthor'] as String? ??
+                species['scientificName'] as String? ??
+                'Unknown';
+        final commonName = commonNames.isNotEmpty
+            ? commonNames.first.toString()
+            : scientificName;
+        final familyName =
+            family['scientificNameWithoutAuthor'] as String? ?? '';
+        final score = (r['score'] as num?)?.toDouble() ?? 0.0;
+
+        // Extract image URL from PlantNet result if available
+        final images = r['images'] as List<dynamic>? ?? [];
+        String? imageUrl;
+        if (images.isNotEmpty) {
+          final firstImage = images.first as Map<String, dynamic>? ?? {};
+          final url2m = firstImage['url'] as Map<String, dynamic>? ?? {};
+          imageUrl = url2m['m'] as String? ?? url2m['o'] as String?;
+        }
+
+        return PlantCandidate(
+          scientificName: scientificName,
+          commonName: commonName,
+          family: familyName,
+          score: score,
+          imageUrl: imageUrl,
+        );
+      }).toList();
+
+      // Sort by score descending (should already be sorted by API)
+      candidates.sort((a, b) => b.score.compareTo(a.score));
+
+      if (candidates.isEmpty) {
+        return IdentificationResult(
+          status: IdentificationStatus.notFound,
+          candidates: const [],
+          bestMatch: null,
+          rawResponse: jsonDecode(body) as Map<String, dynamic>,
+        );
+      }
+
+      final best = candidates.first;
+      final status = best.score >= 0.75
+          ? IdentificationStatus.identified
+          : best.score >= 0.3
+              ? IdentificationStatus.uncertain
+              : IdentificationStatus.notFound;
+
+      return IdentificationResult(
+        status: status,
+        candidates: candidates,
+        bestMatch: best,
+        rawResponse: jsonDecode(body) as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('[PlantNet] Failed to parse response: $e');
+      return IdentificationResult(
+        status: IdentificationStatus.error,
+        candidates: const [],
+        bestMatch: null,
+        rawResponse: {'parse_error': e.toString()},
+      );
+    }
+  }
+}
+
+// ============================================================================
+// DEMO FALLBACK IMPLEMENTATION (used when no API key is present)
+// ============================================================================
+
+/// Offline demo implementation with curated botanical candidate pools.
+/// Used as a fallback when no Pl@ntNet API key is configured.
 class DemoPlantIdentificationService implements PlantIdentificationService {
   final Random _random = Random();
 
@@ -66,7 +235,7 @@ class DemoPlantIdentificationService implements PlantIdentificationService {
       ),
       PlantCandidate(
         scientificName: 'Hypochaeris radicata',
-        commonName: 'Cat\'s Ear',
+        commonName: "Cat's Ear",
         family: 'Asteraceae',
         score: 0.28,
       ),
@@ -111,12 +280,6 @@ class DemoPlantIdentificationService implements PlantIdentificationService {
         commonName: 'Common Sage',
         family: 'Lamiaceae',
         score: 0.48,
-      ),
-      PlantCandidate(
-        scientificName: 'Rosmarinus officinalis',
-        commonName: 'Rosemary',
-        family: 'Lamiaceae',
-        score: 0.35,
       ),
     ],
     [
@@ -164,11 +327,12 @@ class DemoPlantIdentificationService implements PlantIdentificationService {
   ];
 
   @override
-  Future<IdentificationResult> identifyPlant(Uint8List imageBytes, String fileName) async {
-    // Simulate network latency and AI processing
+  Future<IdentificationResult> identifyPlant(
+    Uint8List imageBytes,
+    String fileName,
+  ) async {
     await Future.delayed(const Duration(milliseconds: 1400));
 
-    // Pick candidate set deterministically based on byte length or randomly
     final poolIndex = imageBytes.isNotEmpty
         ? (imageBytes.length % _candidatePools.length)
         : _random.nextInt(_candidatePools.length);
@@ -189,43 +353,5 @@ class DemoPlantIdentificationService implements PlantIdentificationService {
         'filename': fileName,
       },
     );
-  }
-}
-
-/// Production implementation of [PlantIdentificationService] that calls
-/// the Supabase `identify-plant` Edge Function.
-class SupabasePlantIdentificationService implements PlantIdentificationService {
-  final SupabaseService _supabaseService;
-  final DemoPlantIdentificationService _demoFallback = DemoPlantIdentificationService();
-
-  SupabasePlantIdentificationService(this._supabaseService);
-
-  @override
-  Future<IdentificationResult> identifyPlant(Uint8List imageBytes, String fileName) async {
-    if (_supabaseService.isDemoMode || !_supabaseService.isInitialized) {
-      return await _demoFallback.identifyPlant(imageBytes, fileName);
-    }
-
-    try {
-      final base64Image = base64Encode(imageBytes);
-
-      final response = await _supabaseService.invokeFunction(
-        'identify-plant',
-        body: {
-          'image_base64': base64Image,
-          'file_name': fileName,
-        },
-      );
-
-      if (response == null || !response.containsKey('candidates')) {
-        debugPrint('[Mossy] Invalid response from identify-plant edge function. Falling back to demo.');
-        return await _demoFallback.identifyPlant(imageBytes, fileName);
-      }
-
-      return IdentificationResult.fromJson(response);
-    } catch (e) {
-      debugPrint('[Mossy] Exception invoking identify-plant edge function: $e. Falling back to demo.');
-      return await _demoFallback.identifyPlant(imageBytes, fileName);
-    }
   }
 }

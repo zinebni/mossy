@@ -3,7 +3,9 @@ import 'plant_candidate.dart';
 enum IdentificationStatus {
   identified,
   uncertain,
-  failed;
+  failed,
+  notFound,
+  error;
 
   static IdentificationStatus fromString(String? value) {
     switch (value?.toLowerCase()) {
@@ -11,6 +13,11 @@ enum IdentificationStatus {
         return IdentificationStatus.identified;
       case 'uncertain':
         return IdentificationStatus.uncertain;
+      case 'not_found':
+      case 'notfound':
+        return IdentificationStatus.notFound;
+      case 'error':
+        return IdentificationStatus.error;
       case 'failed':
       default:
         return IdentificationStatus.failed;
@@ -35,7 +42,10 @@ class IdentificationResult {
 
   bool get isIdentified => status == IdentificationStatus.identified;
   bool get isUncertain => status == IdentificationStatus.uncertain;
-  bool get isFailed => status == IdentificationStatus.failed;
+  bool get isFailed =>
+      status == IdentificationStatus.failed ||
+      status == IdentificationStatus.notFound ||
+      status == IdentificationStatus.error;
   bool get hasCandidates => candidates.isNotEmpty;
 
   factory IdentificationResult.fromJson(Map<String, dynamic> json) {

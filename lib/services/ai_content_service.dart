@@ -1,6 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import '../shared/models/ai_content.dart';
-import 'supabase_service.dart';
 
 /// Abstract interface for generating AI educational content and nature insights.
 abstract class AiContentService {
@@ -12,7 +13,196 @@ abstract class AiContentService {
   );
 }
 
-/// Realistic demo implementation with curated botanical knowledge for common plants.
+// ============================================================================
+// REAL GEMINI API IMPLEMENTATION
+// ============================================================================
+
+/// Production implementation that calls Google Gemini API (REST) directly.
+/// Requires a valid [apiKey] from https://aistudio.google.com
+class GeminiAiContentService implements AiContentService {
+  final String apiKey;
+
+  static const String _model = 'gemini-2.0-flash';
+  static const Duration _timeout = Duration(seconds: 30);
+
+  GeminiAiContentService(this.apiKey);
+
+  String get _apiUrl =>
+      'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$apiKey';
+
+  @override
+  Future<AiContent> generateContent(
+    String scientificName,
+    String commonName,
+    String family,
+    String language,
+  ) async {
+    if (apiKey.isEmpty) {
+      debugPrint('[Gemini] No API key — falling back to demo service.');
+      return await DemoAiContentService()
+          .generateContent(scientificName, commonName, family, language);
+    }
+
+    final langNote = language == 'fr'
+        ? 'Respond entirely in French.'
+        : 'Respond in English.';
+
+    final prompt = '''
+You are an enthusiastic botanical educator writing for a nature discovery app called Mossy.
+$langNote
+
+For the plant "$commonName" (scientific name: $scientificName, family: $family), provide structured botanical wisdom.
+
+Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this exact structure:
+{
+  "introduction": "A warm, engaging 2-sentence introduction to this plant",
+  "description": "A detailed botanical description in 3-4 sentences covering morphology, habitat, and ecology",
+  "funFacts": [
+    "First fascinating fact about this plant",
+    "Second fascinating fact",
+    "Third fascinating fact"
+  ],
+  "observationTips": [
+    "First practical field observation tip for naturalists",
+    "Second observation tip"
+  ],
+  "safetyNote": "Brief safety note: is it toxic, edible, or safe to handle?"
+}
+''';
+
+    try {
+      debugPrint('[Gemini] Requesting content for $scientificName...');
+
+      final response = await http
+          .post(
+            Uri.parse(_apiUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'contents': [
+                {
+                  'parts': [
+                    {'text': prompt}
+                  ]
+                }
+              ],
+              'generationConfig': {
+                'temperature': 0.7,
+                'maxOutputTokens': 1024,
+                'responseMimeType': 'application/json',
+              },
+            }),
+          )
+          .timeout(_timeout);
+
+      debugPrint('[Gemini] Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return _parseResponse(response.body, scientificName, commonName, family);
+      } else {
+        debugPrint('[Gemini] API error ${response.statusCode}: ${response.body}');
+        // On API error, fall back to demo service
+        return await DemoAiContentService()
+            .generateContent(scientificName, commonName, family, language);
+      }
+    } on Exception catch (e) {
+      debugPrint('[Gemini] Exception during content generation: $e');
+      return await DemoAiContentService()
+          .generateContent(scientificName, commonName, family, language);
+    }
+  }
+
+  AiContent _parseResponse(
+    String body,
+    String scientificName,
+    String commonName,
+    String family,
+  ) {
+    try {
+      final responseJson = jsonDecode(body) as Map<String, dynamic>;
+
+      // Navigate Gemini response structure
+      final candidates =
+          responseJson['candidates'] as List<dynamic>? ?? [];
+      if (candidates.isEmpty) {
+        throw Exception('No candidates in Gemini response');
+      }
+
+      final content =
+          candidates.first['content'] as Map<String, dynamic>? ?? {};
+      final parts = content['parts'] as List<dynamic>? ?? [];
+      if (parts.isEmpty) {
+        throw Exception('No parts in Gemini content');
+      }
+
+      final rawText = parts.first['text'] as String? ?? '';
+      debugPrint('[Gemini] Raw text length: ${rawText.length} chars');
+
+      // Try direct JSON parse first (when responseMimeType worked)
+      Map<String, dynamic> plantJson;
+      try {
+        plantJson = jsonDecode(rawText) as Map<String, dynamic>;
+      } catch (_) {
+        // Strip possible markdown code fences and retry
+        final cleaned = rawText
+            .replaceAll(RegExp(r'```json\s*'), '')
+            .replaceAll(RegExp(r'```\s*'), '')
+            .trim();
+        plantJson = jsonDecode(cleaned) as Map<String, dynamic>;
+      }
+
+      return AiContent(
+        introduction: plantJson['introduction'] as String? ?? '',
+        description: plantJson['description'] as String? ?? '',
+        funFacts: _parseStringList(plantJson['funFacts']),
+        observationTips: _parseStringList(plantJson['observationTips']),
+        safetyNote: plantJson['safetyNote'] as String?,
+      );
+    } catch (e) {
+      debugPrint('[Gemini] Failed to parse response: $e — using structured fallback');
+      return _buildFallback(scientificName, commonName, family);
+    }
+  }
+
+  List<String> _parseStringList(dynamic value) {
+    if (value == null) return const [];
+    if (value is List) return value.map((e) => e.toString()).toList();
+    return const [];
+  }
+
+  AiContent _buildFallback(
+    String scientificName,
+    String commonName,
+    String family,
+  ) {
+    return AiContent(
+      introduction:
+          '$commonName ($scientificName) is a remarkable member of the $family family, '
+          'celebrated for its unique adaptations and ecological role in natural habitats.',
+      description:
+          '$scientificName exhibits structural characteristics typical of $family. '
+          'It thrives where conditions suit its evolutionary heritage, contributing to '
+          'local biodiversity and supporting a web of dependent organisms.',
+      funFacts: [
+        'Members of the $family family have diversified over millions of years into thousands of species worldwide.',
+        '$commonName plays a valuable role in its ecosystem by providing resources for local wildlife.',
+        'Botanists study $scientificName to better understand plant evolution and adaptation strategies.',
+      ],
+      observationTips: [
+        'Examine the leaf arrangement (alternate, opposite, or whorled) along the stem for identification clues.',
+        'Look at petal count and symmetry — these are key diagnostic features in $family.',
+      ],
+      safetyNote:
+          'Always wash hands after handling unfamiliar plants and never consume wild flora without verified expert guidance.',
+    );
+  }
+}
+
+// ============================================================================
+// DEMO FALLBACK IMPLEMENTATION (used when no API key is present)
+// ============================================================================
+
+/// Offline demo implementation with curated botanical knowledge for common plants.
+/// Used as a fallback when no Gemini API key is configured.
 class DemoAiContentService implements AiContentService {
   static final Map<String, AiContent> _curatedKnowledge = {
     'bellis perennis': const AiContent(
@@ -72,33 +262,16 @@ class DemoAiContentService implements AiContentService {
       description:
           'A compact, strongly aromatic evergreen subshrub native to Mediterranean rocky hillsides. It features narrow, linear leaves covered in fine hairs and terminal spikes of deep purple to lilac two-lipped flowers rich in nectar.',
       funFacts: [
-        'The Romans used lavender to scent their public baths, giving rise to its botanical name from the Latin "lavare", meaning "to wash".',
-        'Linalool, the primary terpene in lavender essential oil, has been clinically shown to reduce anxiety and promote restful sleep.',
-        'Queen Victoria was a passionate lover of lavender and appointed an official royal lavender supplier.',
+        'Lavender essential oil has been used since ancient Roman times for bathing, cooking, and as a natural moth repellent.',
+        'Bees are strongly attracted to lavender — a single healthy bush can produce enough nectar to fill a large honey jar.',
+        'The word "lavender" derives from the Latin "lavare" (to wash), since Romans scented their baths with its flowers.',
       ],
       observationTips: [
-        'Gently rub a leaf between your thumb and forefinger to release the fragrant essential oils stored in microscopic glands.',
-        'Watch for native bumblebees, honeybees, and butterflies that visit the purple flower spikes throughout warm sunny afternoons.',
+        'Count the number of flower whorls on a single spike — lavender typically has 6–10 stacked rings.',
+        'Rub a leaf gently between your fingers to release the essential oils and appreciate the characteristic camphor-like fragrance.',
       ],
       safetyNote:
-          'Essential oils are very concentrated and should not be ingested directly without professional guidance.',
-    ),
-    'hedera helix': const AiContent(
-      introduction:
-          'Common Ivy is a magnificent evergreen climber that plays a vital ecological role in supporting forest biodiversity throughout winter.',
-      description:
-          'An evergreen woody vine that climbs using adventitious aerial rootlets. It possesses two distinct leaf types: juvenile palmately 3–5 lobed leaves on climbing stems, and mature unlobed diamond-shaped leaves on flowering branches.',
-      funFacts: [
-        'Ivy flowers very late in autumn (September–November), providing a crucial final nectar source for bees and hoverflies before hibernation.',
-        'Contrary to common myth, English Ivy does not choke or feed on healthy tree sap; its rootlets merely grip the bark surface for support.',
-        'In ancient Greece, ivy was sacred to Dionysus, the god of nature and celebration.',
-      ],
-      observationTips: [
-        'Compare the lobed leaves low on the wall with the smooth, oval leaves near the flowering top.',
-        'Check for small black winter berries that provide high-fat sustenance to birds during freezing months.',
-      ],
-      safetyNote:
-          'Ivy berries and leaves contain falcarinol and saponins which are toxic to humans and pets if ingested.',
+          'Generally safe — lavender oil is widely used in aromatherapy, though undiluted essential oil can irritate sensitive skin.',
     ),
     'trifolium repens': const AiContent(
       introduction:
@@ -117,6 +290,23 @@ class DemoAiContentService implements AiContentService {
       safetyNote:
           'Safe for humans in small amounts, but raw foliage should not be eaten in large quantities due to trace glycosides.',
     ),
+    'hedera helix': const AiContent(
+      introduction:
+          'Common Ivy is an evergreen climbing vine that transforms bare walls and tree trunks into verdant tapestries throughout the year.',
+      description:
+          'A vigorous woody perennial that climbs using adhesive aerial rootlets. It produces two distinct leaf forms: deeply lobed juvenile leaves on climbing shoots and unlobed, oval adult leaves on flowering branches near the top.',
+      funFacts: [
+        'Ivy berries are a critical winter food source for birds such as wood pigeons, blackbirds, and thrushes when other food is scarce.',
+        'The plant has been a symbol of fidelity and eternal life since ancient Greece, where athletes were crowned with ivy wreaths.',
+        'Ivy can grow over 30 meters high and live for more than 400 years when established on a suitable support structure.',
+      ],
+      observationTips: [
+        'Compare the lobed leaves low on the wall with the smooth, oval leaves near the flowering top.',
+        'Check for small black winter berries that provide high-fat sustenance to birds during freezing months.',
+      ],
+      safetyNote:
+          'Ivy berries and leaves contain falcarinol and saponins which are toxic to humans and pets if ingested.',
+    ),
   };
 
   @override
@@ -134,12 +324,15 @@ class DemoAiContentService implements AiContentService {
       return _curatedKnowledge[key]!;
     }
 
-    // Dynamic high-quality fallback for other species
+    // Dynamic fallback for species not in the curated set
     return AiContent(
       introduction:
-          '$commonName ($scientificName) is a fascinating member of the $family botanical family, celebrated for its unique ecological adaptations.',
+          '$commonName ($scientificName) is a fascinating member of the $family botanical family, '
+          'celebrated for its unique ecological adaptations.',
       description:
-          '$scientificName exhibits structural characteristics typical of $family. It thrives in temperate environments where its foliage captures sunlight efficiently and supports local pollinators.',
+          '$scientificName exhibits structural characteristics typical of $family. '
+          'It thrives in temperate environments where its foliage captures sunlight efficiently '
+          'and supports local pollinators.',
       funFacts: [
         'Members of the $family family have developed specialized survival strategies over millions of years of evolution.',
         '$commonName plays a key role in its native habitat by contributing to biodiversity and soil health.',
@@ -148,58 +341,9 @@ class DemoAiContentService implements AiContentService {
       observationTips: [
         'Observe the leaf arrangement (alternate vs. opposite) along the stem.',
         'Look closely at petal symmetry and the color of pollen on the anthers.',
-        'Check the underside of leaves for protective trichomes (plant hairs).',
       ],
       safetyNote:
           'Always wash your hands after handling unfamiliar plants and never consume wild flora without verified expert guidance.',
     );
-  }
-}
-
-/// Production implementation of [AiContentService] calling
-/// the Supabase `generate-discovery-content` Edge Function.
-class SupabaseAiContentService implements AiContentService {
-  final SupabaseService _supabaseService;
-  final DemoAiContentService _demoFallback = DemoAiContentService();
-
-  SupabaseAiContentService(this._supabaseService);
-
-  @override
-  Future<AiContent> generateContent(
-    String scientificName,
-    String commonName,
-    String family,
-    String language,
-  ) async {
-    if (_supabaseService.isDemoMode || !_supabaseService.isInitialized) {
-      return await _demoFallback.generateContent(
-          scientificName, commonName, family, language);
-    }
-
-    try {
-      final response = await _supabaseService.invokeFunction(
-        'generate-discovery-content',
-        body: {
-          'scientific_name': scientificName,
-          'common_name': commonName,
-          'family': family,
-          'language': language,
-        },
-      );
-
-      if (response != null &&
-          (response.containsKey('introduction') ||
-              response.containsKey('description'))) {
-        return AiContent.fromJson(response);
-      }
-
-      return await _demoFallback.generateContent(
-          scientificName, commonName, family, language);
-    } catch (e) {
-      debugPrint(
-          '[Mossy] Failed to call generate-discovery-content: $e. Using fallback.');
-      return await _demoFallback.generateContent(
-          scientificName, commonName, family, language);
-    }
   }
 }

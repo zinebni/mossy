@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -35,21 +36,23 @@ final supabaseServiceProvider = Provider<SupabaseService>((ref) {
 });
 
 /// Provider for plant identification service.
+/// Uses real Pl@ntNet API when PLANTNET_API_KEY is set, otherwise falls back to demo.
 final plantIdentificationServiceProvider = Provider<PlantIdentificationService>((ref) {
-  final isDemo = ref.watch(demoModeProvider);
-  final supabase = ref.watch(supabaseServiceProvider);
-  return isDemo
-      ? DemoPlantIdentificationService()
-      : SupabasePlantIdentificationService(supabase);
+  final plantNetKey = dotenv.env['PLANTNET_API_KEY'] ?? '';
+  if (plantNetKey.isNotEmpty) {
+    return PlantNetIdentificationService(plantNetKey);
+  }
+  return DemoPlantIdentificationService();
 });
 
 /// Provider for AI educational content generation.
+/// Uses real Gemini API when GEMINI_API_KEY is set, otherwise falls back to demo.
 final aiContentServiceProvider = Provider<AiContentService>((ref) {
-  final isDemo = ref.watch(demoModeProvider);
-  final supabase = ref.watch(supabaseServiceProvider);
-  return isDemo
-      ? DemoAiContentService()
-      : SupabaseAiContentService(supabase);
+  final geminiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+  if (geminiKey.isNotEmpty) {
+    return GeminiAiContentService(geminiKey);
+  }
+  return DemoAiContentService();
 });
 
 /// Provider for discovery management.
