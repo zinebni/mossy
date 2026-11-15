@@ -186,7 +186,7 @@ final discoveriesProvider =
     StateNotifierProvider<DiscoveriesNotifier, AsyncValue<List<Discovery>>>((ref) {
   final service = ref.watch(discoveryServiceProvider);
   final auth = ref.watch(authProvider);
-  final userId = auth.user?.id ?? 'demo-user';
+  final userId = auth.user?.id ?? 'guest-user';
   return DiscoveriesNotifier(service, userId);
 });
 
@@ -262,7 +262,7 @@ final missionsProvider =
     StateNotifierProvider<MissionsNotifier, AsyncValue<List<UserMission>>>((ref) {
   final service = ref.watch(missionServiceProvider);
   final auth = ref.watch(authProvider);
-  final userId = auth.user?.id ?? 'demo-user';
+  final userId = auth.user?.id ?? 'guest-user';
   return MissionsNotifier(service, userId);
 });
 
@@ -320,7 +320,7 @@ final achievementsProvider =
     StateNotifierProvider<AchievementsNotifier, AsyncValue<List<Achievement>>>((ref) {
   final service = ref.watch(achievementServiceProvider);
   final auth = ref.watch(authProvider);
-  final userId = auth.user?.id ?? 'demo-user';
+  final userId = auth.user?.id ?? 'guest-user';
   return AchievementsNotifier(service, userId);
 });
 
@@ -367,7 +367,7 @@ final gardenStateProvider =
     StateNotifierProvider<GardenStateNotifier, AsyncValue<GardenState>>((ref) {
   final service = ref.watch(gardenServiceProvider);
   final auth = ref.watch(authProvider);
-  final userId = auth.user?.id ?? 'demo-user';
+  final userId = auth.user?.id ?? 'guest-user';
   return GardenStateNotifier(service, userId);
 });
 
@@ -383,7 +383,7 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
 
   Future<void> loadProfile() async {
     final authState = _ref.read(authProvider);
-    final user = authState.user ?? AuthNotifier.demoUser;
+    final user = authState.user ?? AuthNotifier.defaultProfile;
     try {
       final total = await _pointsService.getTotalPoints(user.id);
       final updated = user.copyWith(
@@ -397,7 +397,7 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
   }
 
   Future<void> addPoints(int points, String reason, {String? referenceId}) async {
-    final current = state.value ?? AuthNotifier.demoUser;
+    final current = state.value ?? AuthNotifier.defaultProfile;
     try {
       await _pointsService.awardPoints(
         current.id,

@@ -18,7 +18,7 @@ class AuthState {
   const AuthState({
     this.user,
     this.isLoading = false,
-    this.isDemoMode = true,
+    this.isDemoMode = false,
     this.errorMessage,
     this.successMessage,
   });
@@ -50,7 +50,7 @@ class AuthState {
       'AuthState(user: ${user?.username}, isDemo: $isDemoMode, loading: $isLoading, error: $errorMessage)';
 }
 
-/// State notifier managing authentication, demo user profiles, and session changes.
+/// State notifier managing authentication, user profiles, and session changes.
 class AuthNotifier extends StateNotifier<AuthState> {
   final SupabaseService _supabaseService;
   StreamSubscription<supa.AuthState>? _authSubscription;
@@ -60,20 +60,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
   static const String _usersStoreKey = 'mossy_registered_users_store';
   static const String _loggedOutKey = 'mossy_explicitly_logged_out';
 
-  static final UserProfile demoUser = UserProfile(
-    id: 'demo-user',
-    username: 'Fern Wanderer',
-    avatarUrl:
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-    totalPoints: 460,
-    explorerLevel: 4,
-    createdAt: DateTime.now().subtract(const Duration(days: 14)),
+  /// Fallback profile for guest or default states
+  static final UserProfile defaultProfile = UserProfile(
+    id: 'guest-user',
+    username: 'Nature Explorer',
+    totalPoints: 0,
+    explorerLevel: 1,
+    createdAt: DateTime.now(),
   );
 
+  /// Deprecated alias for backwards-compatibility with tests
+  static UserProfile get demoUser => defaultProfile;
+
   AuthNotifier(this._supabaseService)
-      : super(AuthState(
-          user: _supabaseService.isDemoMode ? demoUser : null,
-          isDemoMode: _supabaseService.isDemoMode,
+      : super(const AuthState(
+          user: null,
+          isDemoMode: false,
         )) {
     _init();
   }
@@ -97,7 +99,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         await _loadUserProfile(session.user.id);
       } else {
         await _clearPersistedSession();
-        state = state.copyWith(clearUser: true, isDemoMode: false);
+        if (mounted) {
+          state = state.copyWith(clearUser: true, isDemoMode: false);
+        }
       }
     });
 
@@ -105,31 +109,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (currentUser != null) {
       await _loadUserProfile(currentUser.id);
     } else {
-      await _clearPersistedSession();
-      state = state.copyWith(clearUser: true, isDemoMode: false);
+      await _restorePersistedSession();
     }
   }
 
-  /// Restores active session from local storage in demo/offline mode.
+  /// Restores active session from local storage.
   Future<void> _restorePersistedSession() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (_userActionOccurred) return;
 
-      final sessionJson = prefs.getString(_sessionKey);
-      if (sessionJson != null && sessionJson.isNotEmpty) {
-        final Map<String, dynamic> data = jsonDecode(sessionJson);
-        final profile = UserProfile.fromJson(data);
-        if (!_userActionOccurred) {
-          state = state.copyWith(user: profile, isDemoMode: _supabaseService.isDemoMode);
+      final isLoggedOut = prefs.getBool(_loggedOutKey) ?? false;
+      if (isLoggedOut) {
+        if (!_userActionOccurred && mounted) {
+          state = state.copyWith(clearUser: true, isDemoMode: false);
         }
         return;
       }
 
-      final isLoggedOut = prefs.getBool(_loggedOutKey) ?? false;
-      if (isLoggedOut) {
-        if (!_userActionOccurred) {
-          state = state.copyWith(clearUser: true, isDemoMode: false);
+      final sessionJson = prefs.getString(_sessionKey);
+      if (sessionJson != null && sessionJson.isNotEmpty) {
+        final Map<String, dynamic> data = jsonDecode(sessionJson);
+        final profile = UserProfile.fromJson(data);
+        if (!_userActionOccurred && mounted) {
+          state = state.copyWith(user: profile, isDemoMode: false);
         }
         return;
       }
@@ -137,9 +140,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       debugPrint('[Mossy] Error restoring session: $e');
     }
 
-    // Default to demo user if no explicit session saved and not logged out
-    if (!_userActionOccurred) {
-      state = state.copyWith(user: demoUser, isDemoMode: true);
+    // Default to unauthenticated when no valid session is saved
+    if (!_userActionOccurred && mounted) {
+      state = state.copyWith(clearUser: true, isDemoMode: false);
     }
   }
 
@@ -169,15 +172,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final response = await _supabaseService
-          .from('profiles')!
-          .select()
+          .from('profiles')
+          ?.select()
           .eq('id', userId)
           .maybeSingle();
 
       if (response != null) {
         final profile = UserProfile.fromJson(response);
         await _persistSession(profile);
-        state = state.copyWith(user: profile, isLoading: false, isDemoMode: false);
+        if (mounted) {
+          state = state.copyWith(user: profile, isLoading: false, isDemoMode: false);
+        }
       } else {
         // Fallback or create base profile
         final newProfile = UserProfile(
@@ -188,16 +193,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
           createdAt: DateTime.now(),
         );
         await _persistSession(newProfile);
-        state = state.copyWith(user: newProfile, isLoading: false, isDemoMode: false);
+        if (mounted) {
+          state = state.copyWith(user: newProfile, isLoading: false, isDemoMode: false);
+        }
       }
     } catch (e) {
       debugPrint('[Mossy] Error loading user profile: $e');
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Failed to load profile. Running in demo mode.',
-        user: demoUser,
-        isDemoMode: true,
-      );
+      if (mounted) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Failed to load profile: $e',
+        );
+      }
     }
   }
 
@@ -218,10 +225,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return false;
     }
 
-    if (_supabaseService.isDemoMode) {
-      // Simulate real delay
+    if (_supabaseService.isDemoMode || !_supabaseService.isInitialized) {
       await Future.delayed(const Duration(milliseconds: 300));
-      return await _signInDemoMode(cleanEmail, cleanPassword);
+      return await _signInOfflineMode(cleanEmail, cleanPassword);
     }
 
     try {
@@ -268,9 +274,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return false;
     }
 
-    if (_supabaseService.isDemoMode) {
+    if (_supabaseService.isDemoMode || !_supabaseService.isInitialized) {
       await Future.delayed(const Duration(milliseconds: 300));
-      return await _signUpDemoMode(cleanEmail, cleanPassword, chosenUsername);
+      return await _signUpOfflineMode(cleanEmail, cleanPassword, chosenUsername);
     }
 
     try {
@@ -294,8 +300,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Demo / Offline sign up implementation that persists user accounts locally.
-  Future<bool> _signUpDemoMode(String email, String password, String username) async {
+  /// Offline sign up implementation that persists user accounts locally when offline.
+  Future<bool> _signUpOfflineMode(String email, String password, String username) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final storeStr = prefs.getString(_usersStoreKey) ?? '{}';
@@ -330,7 +336,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(
         user: newProfile,
         isLoading: false,
-        isDemoMode: true,
+        isDemoMode: false,
         errorMessage: null,
       );
       return true;
@@ -340,16 +346,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Demo / Offline sign in implementation verifying against saved local accounts.
-  Future<bool> _signInDemoMode(String email, String password) async {
+  /// Offline sign in implementation verifying against saved local accounts.
+  Future<bool> _signInOfflineMode(String email, String password) async {
     try {
-      // Allow demo user credentials
-      if (email == 'demo@mossy.app' || email == 'fern@mossy.app') {
-        await _persistSession(demoUser);
-        state = state.copyWith(user: demoUser, isLoading: false, isDemoMode: true);
-        return true;
-      }
-
       final prefs = await SharedPreferences.getInstance();
       final storeStr = prefs.getString(_usersStoreKey) ?? '{}';
       final Map<String, dynamic> users = jsonDecode(storeStr);
@@ -359,7 +358,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         if (userData['password'] == password) {
           final profile = UserProfile.fromJson(userData['profile'] as Map<String, dynamic>);
           await _persistSession(profile);
-          state = state.copyWith(user: profile, isLoading: false, isDemoMode: true);
+          state = state.copyWith(user: profile, isLoading: false, isDemoMode: false);
           return true;
         } else {
           state = state.copyWith(isLoading: false, errorMessage: 'Incorrect password.');
@@ -367,10 +366,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         }
       }
 
-      // If user not registered in local store:
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Account not found. Please sign up first or use Demo account.',
+        errorMessage: 'Account not found. Please sign up first.',
       );
       return false;
     } catch (e) {
@@ -379,7 +377,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Sends a password reset email via Supabase or simulated in Demo mode.
+  /// Sends a password reset email via Supabase or local notification.
   Future<bool> resetPassword(String email) async {
     final cleanEmail = email.trim().toLowerCase();
     if (cleanEmail.isEmpty || !cleanEmail.contains('@')) {
@@ -389,7 +387,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
 
-    if (_supabaseService.isDemoMode) {
+    if (_supabaseService.isDemoMode || !_supabaseService.isInitialized) {
       await Future.delayed(const Duration(milliseconds: 300));
       state = state.copyWith(
         isLoading: false,
@@ -418,7 +416,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> signOut() async {
     _userActionOccurred = true;
     try {
-      if (!_supabaseService.isDemoMode) {
+      if (!_supabaseService.isDemoMode && _supabaseService.isInitialized) {
         await _supabaseService.auth?.signOut();
       }
     } catch (e) {
@@ -442,23 +440,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _persistSession(guestProfile);
     state = state.copyWith(
       user: guestProfile,
-      isDemoMode: true,
+      isDemoMode: false,
       clearError: true,
       isLoading: false,
     );
   }
 
-  /// Switch to demo user mode.
-  Future<void> enterDemoMode() async {
-    _userActionOccurred = true;
-    await _persistSession(demoUser);
-    state = state.copyWith(
-      user: demoUser,
-      isDemoMode: true,
-      clearError: true,
-      isLoading: false,
-    );
-  }
+  /// Deprecated alias to support legacy calls without breaking
+  Future<void> enterDemoMode() => continueAsGuest();
 
   /// Clear any active error message.
   void clearError() {
@@ -484,7 +473,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     if (!_supabaseService.isDemoMode && _supabaseService.isInitialized) {
       try {
-        await _supabaseService.from('profiles')!.update({
+        await _supabaseService.from('profiles')?.update({
           if (username != null) 'username': username,
           if (avatarUrl != null) 'avatar_url': avatarUrl,
         }).eq('id', updated.id);

@@ -533,7 +533,7 @@ class _IdentificationResultScreen extends ConsumerWidget {
   Future<void> _saveDiscovery(BuildContext context, WidgetRef ref, PlantCandidate candidate) async {
     try {
       final auth = ref.read(authProvider);
-      final userId = auth.user?.id ?? 'demo-user';
+      final userId = auth.user?.id ?? 'guest-user';
       final aiService = ref.read(aiContentServiceProvider);
       final discoveryNotifier = ref.read(discoveriesProvider.notifier);
 

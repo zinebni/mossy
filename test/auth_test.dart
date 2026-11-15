@@ -143,11 +143,10 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    test('Initializes in demo mode with demo user when no session is persisted', () async {
+    test('Initializes unauthenticated when no session is persisted', () async {
       final notifier = AuthNotifier(SupabaseService.instance);
-      expect(notifier.state.isAuthenticated, isTrue);
-      expect(notifier.state.user?.username, equals('Fern Wanderer'));
-      expect(notifier.state.isDemoMode, isTrue);
+      expect(notifier.state.isAuthenticated, isFalse);
+      expect(notifier.state.user, isNull);
     });
 
     test('Validates email and password length on signup', () async {

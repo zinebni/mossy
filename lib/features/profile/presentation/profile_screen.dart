@@ -56,7 +56,7 @@ class ProfileScreen extends ConsumerWidget {
                     Text(profile.username, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                     Text('Explorer Level ${profile.explorerLevel}',
                         style: const TextStyle(color: AppColors.sageGreen, fontWeight: FontWeight.w600)),
-                    if (authState.isGuest || authState.isDemoMode)
+                    if (authState.isGuest || !authState.isAuthenticated)
                       GestureDetector(
                         onTap: () => context.push('/auth'),
                         child: Container(
@@ -67,15 +67,15 @@ class ProfileScreen extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: AppColors.butterYellow),
                           ),
-                          child: Row(
+                          child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                authState.isGuest ? 'Guest Mode (Sign in)' : 'Demo Mode (Sign in)',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
+                                'Guest Mode (Sign in to save progress)',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
                               ),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.arrow_forward_ios_rounded, size: 9, color: AppColors.darkGreen),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_ios_rounded, size: 9, color: AppColors.darkGreen),
                             ],
                           ),
                         ),

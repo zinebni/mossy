@@ -115,11 +115,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     _navigateToHome();
   }
 
-  Future<void> _handleDemoExplore() async {
-    await ref.read(authProvider.notifier).enterDemoMode();
-    _navigateToHome();
-  }
-
   void _showForgotPasswordDialog() {
     final emailController = TextEditingController(text: _signInEmailController.text);
     final formKey = GlobalKey<FormState>();
@@ -425,23 +420,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                           : CrossFadeState.showFirst,
                       firstChild: _buildSignInForm(authState),
                       secondChild: _buildSignUpForm(authState),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // 5. Quick Demo account button
-                  TextButton.icon(
-                    key: const Key('auth_demo_button'),
-                    onPressed: _handleDemoExplore,
-                    icon: const Icon(Icons.eco_rounded, size: 16, color: AppColors.sageGreen),
-                    label: Text(
-                      'Explore with Demo Account (Fern Wanderer)',
-                      style: GoogleFonts.nunito(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.sageGreen,
-                      ),
                     ),
                   ),
                 ],

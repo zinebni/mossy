@@ -37,17 +37,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          if (authState.isDemoMode)
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: AppColors.butterYellow.withAlpha(50), borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.butterYellow.withAlpha(120))),
-              child: Row(children: [
-                const Icon(Icons.info_outline_rounded, color: AppColors.darkGreen, size: 20),
-                const SizedBox(width: 10),
-                Expanded(child: Text('Running in Demo Mode. Configure Supabase credentials to enable real accounts.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.darkGreen))),
-              ]),
-            ),
           _sectionLabel('Profile'),
           MossyCard(
             child: Column(children: [
@@ -117,7 +106,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 titleColor: AppColors.error,
                 onTap: () => _confirmSignOut(context, ref),
               ),
-              if (!authState.isDemoMode) ...[
+              if (authState.isAuthenticated && !authState.isGuest) ...[
                 _Divider(),
                 _ListTile(
                   icon: Icons.delete_forever_rounded,

@@ -52,13 +52,17 @@ class _SplashScreenState extends State<SplashScreen>
     final prefs = await SharedPreferences.getInstance();
     final bool hasCompletedOnboarding =
         prefs.getBool('onboarding_completed') ?? false;
+    final bool hasSession = prefs.containsKey('mossy_active_session_profile');
+    final bool isLoggedOut = prefs.getBool('mossy_explicitly_logged_out') ?? false;
 
     if (!mounted) return;
 
-    if (hasCompletedOnboarding) {
+    if (!hasCompletedOnboarding) {
+      context.go('/onboarding');
+    } else if (hasSession && !isLoggedOut) {
       context.go('/home');
     } else {
-      context.go('/onboarding');
+      context.go('/auth');
     }
   }
 
