@@ -3,6 +3,7 @@ export 'ai_content_service.dart';
 export 'camera_service.dart';
 export 'discovery_service.dart';
 export 'garden_service.dart';
+export 'image_storage_service.dart';
 export 'location_service.dart';
 export 'mission_service.dart';
 export 'plant_identification_service.dart';

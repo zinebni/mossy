@@ -4,12 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/mossy_card.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../services/image_storage_service.dart';
 import '../../../shared/models/discovery.dart';
 import '../../../shared/providers/app_providers.dart';
+import '../../../shared/providers/auth_provider.dart';
 
 enum _SortOption {
   recent('Newest First'),
@@ -19,6 +23,19 @@ enum _SortOption {
 
   final String label;
   const _SortOption(this.label);
+
+  String localizedLabel(bool isFr) {
+    switch (this) {
+      case _SortOption.recent:
+        return isFr ? 'Plus récent d\'abord' : 'Newest First';
+      case _SortOption.oldest:
+        return isFr ? 'Plus ancien d\'abord' : 'Oldest First';
+      case _SortOption.confidence:
+        return isFr ? 'Confiance la plus élevée' : 'Highest Confidence';
+      case _SortOption.name:
+        return isFr ? 'Nom (A–Z)' : 'Name (A–Z)';
+    }
+  }
 }
 
 /// Nature Discovery Journal — Personal botanical collection of all saved finds.
@@ -40,6 +57,8 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final isFr = l10n?.home == 'Accueil';
     final discoveriesAsync = ref.watch(discoveriesProvider);
 
     return Scaffold(
@@ -57,7 +76,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'My Collection',
+                          l10n?.myCollection ?? 'My Collection',
                           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.darkGreen,
@@ -65,15 +84,17 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                         ),
                         discoveriesAsync.maybeWhen(
                           data: (list) => Text(
-                            'Nature Discovery Journal • ${list.length} ${list.length == 1 ? 'find' : 'finds'}',
+                            isFr
+                                ? 'Journal de découvertes • ${list.length} ${list.length == 1 ? 'trouvaille' : 'trouvailles'}'
+                                : 'Nature Discovery Journal • ${list.length} ${list.length == 1 ? 'find' : 'finds'}',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: AppColors.secondaryText,
                                   fontWeight: FontWeight.w600,
                                 ),
                           ),
-                          orElse: () => const Text(
-                            'Nature Discovery Journal',
-                            style: TextStyle(
+                          orElse: () => Text(
+                            isFr ? 'Journal de découvertes' : 'Nature Discovery Journal',
+                            style: const TextStyle(
                               color: AppColors.secondaryText,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -86,14 +107,14 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                   // Sort menu button
                   PopupMenuButton<_SortOption>(
                     icon: const Icon(Icons.sort_rounded, color: AppColors.sageGreen),
-                    tooltip: 'Sort journal',
+                    tooltip: isFr ? 'Trier le journal' : 'Sort journal',
                     initialValue: _sortOption,
                     onSelected: (option) => setState(() => _sortOption = option),
                     itemBuilder: (context) => _SortOption.values.map((opt) {
                       return PopupMenuItem(
                         value: opt,
                         child: Text(
-                          opt.label,
+                          opt.localizedLabel(isFr),
                           style: TextStyle(
                             fontWeight: _sortOption == opt ? FontWeight.w700 : FontWeight.normal,
                             color: _sortOption == opt ? AppColors.darkGreen : AppColors.secondaryText,
@@ -108,7 +129,9 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                       _gridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
                       color: AppColors.sageGreen,
                     ),
-                    tooltip: _gridView ? 'Switch to list view' : 'Switch to grid view',
+                    tooltip: _gridView
+                        ? (isFr ? 'Vue liste' : 'Switch to list view')
+                        : (isFr ? 'Vue grille' : 'Switch to grid view'),
                     onPressed: () => setState(() => _gridView = !_gridView),
                   ),
                 ],
@@ -125,17 +148,13 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.border),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(8),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
+                    BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 2)),
                   ],
                 ),
                 child: TextField(
                   onChanged: (v) => setState(() => _search = v.trim().toLowerCase()),
                   decoration: InputDecoration(
-                    hintText: 'Search by common name, species, family, or notes…',
+                    hintText: l10n?.searchPlants ?? 'Search by common name, species, family, or notes…',
                     hintStyle: const TextStyle(fontSize: 13, color: AppColors.mutedText),
                     prefixIcon: const Icon(Icons.search_rounded, color: AppColors.mutedText, size: 20),
                     suffixIcon: _search.isNotEmpty
@@ -151,7 +170,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
               ),
             ),
 
-            // ─── 3. Filter Chips (Favorites & Dynamic Botanical Families) ──
+            // ─── 3. Filter Chips ──────────────────────────────────────────
             discoveriesAsync.maybeWhen(
               data: (all) {
                 final families = all
@@ -169,9 +188,8 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     children: [
-                      // "All" filter
                       ChoiceChip(
-                        label: const Text('All'),
+                        label: Text(l10n?.all ?? 'All'),
                         selected: !_favoritesOnly && _selectedFamily == null,
                         onSelected: (_) {
                           setState(() {
@@ -184,27 +202,19 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                         labelStyle: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: (!_favoritesOnly && _selectedFamily == null)
-                              ? AppColors.darkGreen
-                              : AppColors.secondaryText,
+                          color: (!_favoritesOnly && _selectedFamily == null) ? AppColors.darkGreen : AppColors.secondaryText,
                         ),
                       ),
                       const SizedBox(width: 8),
-
-                      // "Favorites" filter
                       FilterChip(
                         avatar: Icon(
                           _favoritesOnly ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                           size: 14,
                           color: _favoritesOnly ? Colors.redAccent : AppColors.secondaryText,
                         ),
-                        label: Text('Favorites ($favoriteCount)'),
+                        label: Text('${l10n?.favorites ?? 'Favorites'} ($favoriteCount)'),
                         selected: _favoritesOnly,
-                        onSelected: (selected) {
-                          setState(() {
-                            _favoritesOnly = selected;
-                          });
-                        },
+                        onSelected: (selected) => setState(() => _favoritesOnly = selected),
                         selectedColor: Colors.redAccent.withAlpha(40),
                         backgroundColor: Colors.white,
                         labelStyle: TextStyle(
@@ -213,8 +223,6 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                           color: _favoritesOnly ? Colors.redAccent : AppColors.secondaryText,
                         ),
                       ),
-
-                      // Botanical Family Filter Chips
                       if (families.isNotEmpty) ...[
                         const SizedBox(width: 8),
                         ...families.map((fam) {
@@ -224,11 +232,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                             child: ChoiceChip(
                               label: Text(fam),
                               selected: isSelected,
-                              onSelected: (selected) {
-                                setState(() {
-                                  _selectedFamily = selected ? fam : null;
-                                });
-                              },
+                              onSelected: (selected) => setState(() => _selectedFamily = selected ? fam : null),
                               selectedColor: AppColors.sageGreen.withAlpha(70),
                               backgroundColor: Colors.white,
                               labelStyle: TextStyle(
@@ -253,17 +257,13 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
             Expanded(
               child: RefreshIndicator(
                 color: AppColors.sageGreen,
-                onRefresh: () async {
-                  ref.invalidate(discoveriesProvider);
-                },
+                onRefresh: () async => ref.invalidate(discoveriesProvider),
                 child: discoveriesAsync.when(
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(color: AppColors.sageGreen),
-                  ),
+                  loading: () => const Center(child: CircularProgressIndicator(color: AppColors.sageGreen)),
                   error: (e, _) => Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
-                      child: Text('Could not load discoveries: $e', textAlign: TextAlign.center),
+                      child: Text(isFr ? 'Impossible de charger les découvertes' : 'Could not load discoveries: $e', textAlign: TextAlign.center),
                     ),
                   ),
                   data: (all) {
@@ -280,7 +280,6 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                       return true;
                     }).toList();
 
-                    // Apply sorting
                     switch (_sortOption) {
                       case _SortOption.recent:
                         list.sort((a, b) => b.discoveredAt.compareTo(a.discoveredAt));
@@ -298,6 +297,8 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
 
                     if (list.isEmpty) {
                       return _EmptyState(
+                        isFr: isFr,
+                        l10n: l10n,
                         favoritesOnly: _favoritesOnly,
                         selectedFamily: _selectedFamily,
                         hasSearch: _search.isNotEmpty,
@@ -316,9 +317,9 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                           childAspectRatio: 0.74,
                         ),
                         itemCount: list.length,
-                        itemBuilder: (ctx, i) => _GridCard(
-                          discovery: list[i],
-                        ).animate().fadeIn(delay: Duration(milliseconds: (i % 8) * 40)),
+                        itemBuilder: (ctx, i) => _GridCard(discovery: list[i])
+                            .animate()
+                            .fadeIn(delay: Duration(milliseconds: (i % 8) * 40)),
                       );
                     }
 
@@ -326,9 +327,9 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                       padding: const EdgeInsets.all(16),
                       physics: const AlwaysScrollableScrollPhysics(),
                       itemCount: list.length,
-                      itemBuilder: (ctx, i) => _ListCard(
-                        discovery: list[i],
-                      ).animate().fadeIn(delay: Duration(milliseconds: (i % 8) * 40)),
+                      itemBuilder: (ctx, i) => _ListCard(discovery: list[i])
+                          .animate()
+                          .fadeIn(delay: Duration(milliseconds: (i % 8) * 40)),
                     );
                   },
                 ),
@@ -343,12 +344,16 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
 
 // ─── Empty State ─────────────────────────────────────────────────────────────
 class _EmptyState extends StatelessWidget {
+  final bool isFr;
+  final AppLocalizations? l10n;
   final bool favoritesOnly;
   final String? selectedFamily;
   final bool hasSearch;
   final int totalCount;
 
   const _EmptyState({
+    required this.isFr,
+    required this.l10n,
     required this.favoritesOnly,
     required this.selectedFamily,
     required this.hasSearch,
@@ -361,17 +366,25 @@ class _EmptyState extends StatelessWidget {
     String description;
 
     if (favoritesOnly) {
-      title = 'No favorites marked';
-      description = 'Tap the heart icon on any botanical find to save it here.';
+      title = isFr ? 'Aucun favori marqué' : 'No favorites marked';
+      description = isFr
+          ? 'Appuyez sur l\'icône cœur sur une découverte pour l\'enregistrer ici.'
+          : 'Tap the heart icon on any botanical find to save it here.';
     } else if (selectedFamily != null) {
-      title = 'No $selectedFamily plants';
-      description = 'You have not recorded any specimens in the $selectedFamily family yet.';
+      title = isFr ? 'Aucune plante $selectedFamily' : 'No $selectedFamily plants';
+      description = isFr
+          ? 'Vous n\'avez pas encore enregistré de spécimens de la famille $selectedFamily.'
+          : 'You have not recorded any specimens in the $selectedFamily family yet.';
     } else if (hasSearch) {
-      title = 'No matches found';
-      description = 'Try searching with a different species, common name, or family.';
+      title = isFr ? 'Aucun résultat trouvé' : 'No matches found';
+      description = isFr
+          ? 'Essayez de rechercher avec une espèce, un nom commun ou une famille différente.'
+          : 'Try searching with a different species, common name, or family.';
     } else {
-      title = 'Your Journal is Empty';
-      description = 'Start exploring nature! Identify wild leaves, flowers, and trees with the camera to build your personal field journal.';
+      title = isFr ? 'Votre journal est vide' : 'Your Journal is Empty';
+      description = isFr
+          ? 'Commencez à explorer la nature ! Identifiez des feuilles, fleurs et arbres avec l\'appareil photo.'
+          : 'Start exploring nature! Identify wild leaves, flowers, and trees with the camera to build your personal field journal.';
     }
 
     return Center(
@@ -412,7 +425,7 @@ class _EmptyState extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: () => context.go('/explore'),
                 icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                label: const Text('Start Exploring'),
+                label: Text(isFr ? 'Commencer à explorer' : 'Start Exploring'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.sageGreen,
                   foregroundColor: Colors.white,
@@ -432,18 +445,25 @@ class _EmptyState extends StatelessWidget {
 class _PlantImage extends StatelessWidget {
   final String url;
   final BoxFit fit;
+  final int? memCacheWidth;
+  final String? heroTag;
 
   const _PlantImage({
     required this.url,
     this.fit = BoxFit.cover,
+    this.memCacheWidth,
+    this.heroTag,
   });
 
   @override
   Widget build(BuildContext context) {
+    Widget imageWidget;
+
     if (url.startsWith('http://') || url.startsWith('https://')) {
-      return CachedNetworkImage(
+      imageWidget = CachedNetworkImage(
         imageUrl: url,
         fit: fit,
+        memCacheWidth: memCacheWidth,
         placeholder: (_, __) => Container(
           color: AppColors.mintLight,
           child: const Center(
@@ -461,15 +481,14 @@ class _PlantImage extends StatelessWidget {
           ),
         ),
       );
-    }
-
-    final cleanPath = url.startsWith('file://') ? url.replaceFirst('file://', '') : url;
-    if (cleanPath.isNotEmpty) {
+    } else {
+      final cleanPath = ImageStorageService.resolveImagePathSync(url);
       final file = File(cleanPath);
       if (file.existsSync()) {
-        return Image.file(
+        imageWidget = Image.file(
           file,
           fit: fit,
+          cacheWidth: memCacheWidth,
           errorBuilder: (_, __, ___) => Container(
             color: AppColors.mintLight,
             child: const Center(
@@ -477,15 +496,23 @@ class _PlantImage extends StatelessWidget {
             ),
           ),
         );
+      } else {
+        imageWidget = Container(
+          color: AppColors.mintLight,
+          child: const Center(
+            child: Icon(Icons.eco_rounded, color: AppColors.sageGreen, size: 36),
+          ),
+        );
       }
     }
 
-    return Container(
-      color: AppColors.mintLight,
-      child: const Center(
-        child: Icon(Icons.eco_rounded, color: AppColors.sageGreen, size: 36),
-      ),
-    );
+    if (heroTag != null && heroTag!.isNotEmpty) {
+      return Hero(
+        tag: heroTag!,
+        child: imageWidget,
+      );
+    }
+    return imageWidget;
   }
 }
 
@@ -529,7 +556,12 @@ class _GridCard extends ConsumerWidget {
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                    child: _PlantImage(url: discovery.imagePath, fit: BoxFit.cover),
+                    child: _PlantImage(
+                      url: discovery.imagePath,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 400,
+                      heroTag: 'discovery_photo_${discovery.id}',
+                    ),
                   ),
                   // Heart favorite button
                   Positioned(
@@ -665,7 +697,12 @@ class _ListCard extends ConsumerWidget {
               child: SizedBox(
                 width: 90,
                 height: 90,
-                child: _PlantImage(url: discovery.imagePath, fit: BoxFit.cover),
+                child: _PlantImage(
+                  url: discovery.imagePath,
+                  fit: BoxFit.cover,
+                  memCacheWidth: 250,
+                  heroTag: 'discovery_photo_list_${discovery.id}',
+                ),
               ),
             ),
 
@@ -792,20 +829,99 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
     setState(() => _d = _d.copyWith(isFavorite: !_d.isFavorite));
   }
 
+  Future<void> _updatePhoto(bool isFr) async {
+    final cameraService = ref.read(cameraServiceProvider);
+    final imageStorage = ref.read(imageStorageServiceProvider);
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isFr ? 'Mettre à jour la photo du spécimen' : 'Update Specimen Photo',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.darkGreen),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: AppColors.mintGreen,
+                  child: Icon(Icons.camera_alt_rounded, color: AppColors.sageGreen),
+                ),
+                title: Text(isFr ? 'Prendre une photo' : 'Take a Photo', style: const TextStyle(fontWeight: FontWeight.w600)),
+                onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: AppColors.mintGreen,
+                  child: Icon(Icons.photo_library_rounded, color: AppColors.sageGreen),
+                ),
+                title: Text(isFr ? 'Choisir dans la galerie' : 'Choose from Gallery', style: const TextStyle(fontWeight: FontWeight.w600)),
+                onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    final picked = await cameraService.pickImage(source);
+    if (picked == null) return;
+
+    // Save locally
+    String newPath = await imageStorage.saveLocalSpecimen(picked.path, _d.id);
+
+    // Sync to cloud if authenticated
+    final auth = ref.read(authProvider);
+    final userId = auth.user?.id;
+    if (userId != null) {
+      final cloudUrl = await imageStorage.uploadSpecimenToCloud(
+        localPath: newPath,
+        discoveryId: _d.id,
+        userId: userId,
+      );
+      if (cloudUrl != null && cloudUrl.isNotEmpty) {
+        newPath = cloudUrl;
+      }
+    }
+
+    final updated = _d.copyWith(imagePath: newPath);
+    await ref.read(discoveriesProvider.notifier).updateDiscovery(updated);
+    if (mounted) {
+      setState(() => _d = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isFr ? 'Photo du spécimen mise à jour ! ✓' : 'Specimen photo updated! ✓'),
+          backgroundColor: AppColors.sageGreen,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   Future<void> _delete() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete Journal Entry'),
         content: Text('Remove "${_d.commonName}" from your nature journal?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
             child: const Text('Delete', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
           ),
         ],
@@ -813,34 +929,110 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
     );
 
     if (confirmed == true && mounted) {
+      final messenger = ScaffoldMessenger.of(context);
+      final nav = Navigator.of(context);
+      final plantName = _d.commonName;
+
+      // Pop detail screen back to collection list immediately
+      nav.pop();
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('🌿 Removed "$plantName" from your journal'),
+          backgroundColor: AppColors.darkGreen,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      final imageStorage = ref.read(imageStorageServiceProvider);
+      await imageStorage.deleteLocalSpecimen(_d.imagePath);
       await ref.read(discoveriesProvider.notifier).deleteDiscovery(_d.id);
-      if (mounted) Navigator.pop(context);
     }
   }
 
-  void _openFullScreenPhoto(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.zero,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            InteractiveViewer(
-              minScale: 0.5,
-              maxScale: 4.0,
-              child: _PlantImage(url: _d.imagePath, fit: BoxFit.contain),
-            ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: IconButton(
-                icon: const Icon(Icons.close_rounded, color: Colors.white, size: 30),
-                onPressed: () => Navigator.pop(ctx),
+  void _openFullScreenPhoto(BuildContext context, bool isFr) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (ctx) => Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 5.0,
+                child: Center(
+                  child: _PlantImage(url: _d.imagePath, fit: BoxFit.contain),
+                ),
               ),
-            ),
-          ],
+              Positioned(
+                top: MediaQuery.of(ctx).padding.top + 10,
+                right: 16,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Colors.white, size: 26),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).padding.bottom + 16),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Colors.black87],
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _d.commonName.isNotEmpty ? _d.commonName : _d.scientificName,
+                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _d.scientificName,
+                        style: const TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.sageGreen.withAlpha(200),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _d.family,
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${(_d.identificationScore * 100).toStringAsFixed(0)}% • ${_d.confidenceLabel}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -848,7 +1040,9 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('MMMM d, yyyy • h:mm a');
+    final l10n = AppLocalizations.of(context);
+    final isFr = l10n?.home == 'Accueil';
+    final dateFormat = DateFormat(isFr ? 'd MMMM yyyy • HH:mm' : 'MMMM d, yyyy • h:mm a', isFr ? 'fr' : 'en');
 
     return Scaffold(
       backgroundColor: AppColors.cream,
@@ -866,15 +1060,20 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                 if (Navigator.of(context).canPop()) {
                   Navigator.of(context).pop();
                 } else {
-                  context.go('/home');
+                  context.go('/collection');
                 }
               },
             ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.fullscreen_rounded, color: AppColors.darkGreen),
-                tooltip: 'View full photo',
-                onPressed: () => _openFullScreenPhoto(context),
+                tooltip: isFr ? 'Voir la photo complète' : 'View full photo',
+                onPressed: () => _openFullScreenPhoto(context, isFr),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_a_photo_outlined, color: AppColors.darkGreen),
+                tooltip: isFr ? 'Changer la photo' : 'Update photo',
+                onPressed: () => _updatePhoto(isFr),
               ),
               IconButton(
                 icon: Icon(
@@ -884,14 +1083,23 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                 tooltip: _d.isFavorite ? 'Remove from favorites' : 'Add to favorites',
                 onPressed: _toggleFav,
               ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                tooltip: 'Delete entry',
+                onPressed: _delete,
+              ),
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: GestureDetector(
-                onTap: () => _openFullScreenPhoto(context),
+                onTap: () => _openFullScreenPhoto(context, isFr),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    _PlantImage(url: _d.imagePath, fit: BoxFit.cover),
+                    _PlantImage(
+                      url: _d.imagePath,
+                      fit: BoxFit.cover,
+                      heroTag: 'discovery_photo_${_d.id}',
+                    ),
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -904,14 +1112,45 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                         ),
                       ),
                     ),
-                    const Positioned(
+                    Positioned(
+                      bottom: 12,
+                      left: 16,
+                      child: GestureDetector(
+                        onTap: () => _updatePhoto(isFr),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha(220),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withAlpha(20), blurRadius: 4),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.camera_alt_rounded, size: 14, color: AppColors.darkGreen),
+                              const SizedBox(width: 4),
+                              Text(
+                                isFr ? 'Changer photo' : 'Change photo',
+                                style: const TextStyle(fontSize: 11, color: AppColors.darkGreen, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
                       bottom: 12,
                       right: 16,
                       child: Row(
                         children: [
-                          Icon(Icons.zoom_in_rounded, size: 14, color: AppColors.darkGreen),
-                          SizedBox(width: 4),
-                          Text('Tap to zoom', style: TextStyle(fontSize: 11, color: AppColors.darkGreen, fontWeight: FontWeight.w600)),
+                          const Icon(Icons.zoom_in_rounded, size: 14, color: AppColors.darkGreen),
+                          const SizedBox(width: 4),
+                          Text(
+                            isFr ? 'Toucher pour zoomer' : 'Tap to zoom',
+                            style: const TextStyle(fontSize: 11, color: AppColors.darkGreen, fontWeight: FontWeight.w600),
+                          ),
                         ],
                       ),
                     ),
@@ -977,7 +1216,7 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                           const Icon(Icons.menu_book_rounded, color: AppColors.sageGreen, size: 20),
                           const SizedBox(width: 8),
                           Text(
-                            'Scientific Classification',
+                            isFr ? 'Classification scientifique' : 'Scientific Classification',
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.darkGreen,
@@ -986,13 +1225,13 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      _TaxonomyRow('Kingdom', 'Plantae'),
-                      _TaxonomyRow('Family', _d.family.isNotEmpty ? _d.family : 'Unknown'),
-                      _TaxonomyRow('Genus', _d.genus),
-                      _TaxonomyRow('Species', _d.scientificName),
+                      _TaxonomyRow(isFr ? 'Règne' : 'Kingdom', 'Plantae'),
+                      _TaxonomyRow(isFr ? 'Famille' : 'Family', _d.family.isNotEmpty ? _d.family : (isFr ? 'Inconnu' : 'Unknown')),
+                      _TaxonomyRow(isFr ? 'Genre' : 'Genus', _d.genus),
+                      _TaxonomyRow(isFr ? 'Espèce' : 'Species', _d.scientificName),
                       if (_d.hasLocation) ...[
                         _TaxonomyRow(
-                          'Coordinates',
+                          isFr ? 'Coordonnées' : 'Coordinates',
                           '${_d.latitude!.toStringAsFixed(4)}°, ${_d.longitude!.toStringAsFixed(4)}°',
                         ),
                       ],
@@ -1005,21 +1244,21 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                 // ─── 📖 Generative Botanical Lore ──────────────────────────
                 if (_d.aiContent != null) ...[
                   if (_d.aiContent!.introduction.isNotEmpty)
-                    _Section('Botanical Overview', _d.aiContent!.introduction),
+                    _Section(isFr ? 'Vue d\'ensemble botanique' : 'Botanical Overview', _d.aiContent!.introduction),
 
                   if (_d.aiContent!.description.isNotEmpty)
-                    _Section('Morphology & Habitat', _d.aiContent!.description),
+                    _Section(isFr ? 'Morphologie & Habitat' : 'Morphology & Habitat', _d.aiContent!.description),
 
                   if (_d.funFacts.isNotEmpty)
                     _BulletSection(
-                      'Fascinating Facts',
+                      isFr ? 'Faits fascinants' : 'Fascinating Facts',
                       _d.funFacts,
                       Icons.lightbulb_outline_rounded,
                     ),
 
                   if (_d.observationTips.isNotEmpty)
                     _BulletSection(
-                      'Field Observation Tips',
+                      isFr ? 'Conseils d\'observation sur le terrain' : 'Field Observation Tips',
                       _d.observationTips,
                       Icons.visibility_outlined,
                     ),
@@ -1042,9 +1281,9 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Safety Note',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
+                                Text(
+                                  isFr ? 'Note de sécurité' : 'Safety Note',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
@@ -1069,7 +1308,7 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                           const Icon(Icons.edit_note_rounded, color: AppColors.sageGreen, size: 22),
                           const SizedBox(width: 8),
                           Text(
-                            'Personal Field Notes',
+                            isFr ? 'Notes de terrain personnelles' : 'Personal Field Notes',
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.darkGreen,
@@ -1077,9 +1316,9 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                           ),
                           const Spacer(),
                           if (_isNotesSaved)
-                            const Text(
-                              'Saved ✓',
-                              style: TextStyle(color: AppColors.sageGreen, fontSize: 12, fontWeight: FontWeight.w700),
+                            Text(
+                              isFr ? 'Enregistré ✓' : 'Saved ✓',
+                              style: const TextStyle(color: AppColors.sageGreen, fontSize: 12, fontWeight: FontWeight.w700),
                             ),
                         ],
                       ),
@@ -1088,7 +1327,9 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                         controller: _notesCtrl,
                         maxLines: 4,
                         decoration: InputDecoration(
-                          hintText: 'Record where you found it, weather, companion plants, or growth stage…',
+                          hintText: isFr
+                              ? 'Notez où vous l\'avez trouvé, la météo, les plantes voisines…'
+                              : 'Record where you found it, weather, companion plants, or growth stage…',
                           hintStyle: const TextStyle(fontSize: 13, color: AppColors.mutedText),
                           filled: true,
                           fillColor: Colors.white,
@@ -1113,7 +1354,7 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                         child: ElevatedButton.icon(
                           onPressed: _saveNotes,
                           icon: const Icon(Icons.check_rounded, size: 16),
-                          label: const Text('Save Notes'),
+                          label: Text(isFr ? 'Enregistrer' : 'Save Notes'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.sageGreen,
                             foregroundColor: Colors.white,
@@ -1132,7 +1373,10 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                 Center(
                   child: TextButton.icon(
                     icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
-                    label: const Text('Remove from Journal', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+                    label: Text(
+                      isFr ? 'Retirer du journal' : 'Remove from Journal',
+                      style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w600),
+                    ),
                     onPressed: _delete,
                   ),
                 ),

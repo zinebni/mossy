@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../l10n/app_localizations.dart';
 import '../../features/adventures/presentation/adventures_screen.dart';
 import '../../features/auth/presentation/auth_screen.dart';
 import '../../features/collection/presentation/collection_screen.dart';
@@ -64,6 +65,13 @@ class _MainScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final homeLabel = l10n?.home ?? 'Home';
+    final exploreLabel = l10n?.explore ?? 'Explore';
+    final collectionLabel = l10n?.collection ?? 'Collection';
+    final adventuresLabel = l10n?.adventures ?? 'Adventures';
+    final gardenLabel = l10n?.garden ?? 'Garden';
+
     return PopScope(
       canPop: shell.currentIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
@@ -80,12 +88,12 @@ class _MainScaffold extends StatelessWidget {
           indicatorColor: const Color(0xFFD9E8CF),
           height: 68,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          destinations: const [
-            NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Home'),
-            NavigationDestination(icon: Icon(Icons.search_outlined), selectedIcon: Icon(Icons.search_rounded), label: 'Explore'),
-            NavigationDestination(icon: Icon(Icons.collections_bookmark_outlined), selectedIcon: Icon(Icons.collections_bookmark_rounded), label: 'Collection'),
-            NavigationDestination(icon: Icon(Icons.explore_outlined), selectedIcon: Icon(Icons.explore_rounded), label: 'Adventures'),
-            NavigationDestination(icon: Icon(Icons.eco_outlined), selectedIcon: Icon(Icons.eco_rounded), label: 'Garden'),
+          destinations: [
+            NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home_rounded), label: homeLabel),
+            NavigationDestination(icon: const Icon(Icons.search_outlined), selectedIcon: const Icon(Icons.search_rounded), label: exploreLabel),
+            NavigationDestination(icon: const Icon(Icons.collections_bookmark_outlined), selectedIcon: const Icon(Icons.collections_bookmark_rounded), label: collectionLabel),
+            NavigationDestination(icon: const Icon(Icons.explore_outlined), selectedIcon: const Icon(Icons.explore_rounded), label: adventuresLabel),
+            NavigationDestination(icon: const Icon(Icons.eco_outlined), selectedIcon: const Icon(Icons.eco_rounded), label: gardenLabel),
           ],
         ),
       ),

@@ -2,13 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
 import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/mossy_card.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../services/supabase_service.dart';
 import '../../../shared/models/discovery.dart';
 import '../../../shared/models/identification_result.dart';
@@ -79,8 +79,13 @@ class ExploreNotifier extends StateNotifier<ExploreState> {
 
     try {
       final service = _ref.read(plantIdentificationServiceProvider);
+      final currentLocale = _ref.read(localeProvider);
       final bytes = await image.readAsBytes();
-      final result = await service.identifyPlant(bytes, image.name);
+      final result = await service.identifyPlant(
+        bytes,
+        image.name,
+        language: currentLocale.languageCode,
+      );
 
       state = state.copyWith(
         isIdentifying: false,
@@ -169,6 +174,7 @@ class _ExploreHomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
@@ -195,7 +201,7 @@ class _ExploreHomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Discover Nature',
+                l10n?.discoverPlant ?? 'Discover a Plant',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: AppColors.darkGreen,
@@ -203,7 +209,9 @@ class _ExploreHomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'Take a photo of any plant to identify it',
+                l10n?.takePhoto != null
+                    ? (AppLocalizations.of(context)?.identifyPlant ?? 'Take a photo of any plant to identify it')
+                    : 'Take a photo of any plant to identify it',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppColors.secondaryText,
@@ -215,7 +223,7 @@ class _ExploreHomeScreen extends ConsumerWidget {
                   Expanded(
                     child: _ActionCard(
                       icon: Icons.camera_alt_rounded,
-                      label: 'Take a Photo',
+                      label: l10n?.takePhoto ?? 'Take a Photo',
                       color: AppColors.sageGreen,
                       onTap: () => _pickImage(context, ref, fromCamera: true),
                     ).animate().slideX(begin: -0.3, delay: 400.ms),
@@ -224,7 +232,7 @@ class _ExploreHomeScreen extends ConsumerWidget {
                   Expanded(
                     child: _ActionCard(
                       icon: Icons.photo_library_rounded,
-                      label: 'From Gallery',
+                      label: l10n?.chooseFromGallery ?? 'From Gallery',
                       color: AppColors.lavender,
                       iconColor: AppColors.darkGreen,
                       textColor: AppColors.darkGreen,
@@ -243,17 +251,17 @@ class _ExploreHomeScreen extends ConsumerWidget {
                         const Icon(Icons.lightbulb_outline_rounded, color: AppColors.butterYellow, size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          'Photo Tips',
+                          l10n?.photoTips ?? 'Photo Tips',
                           style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
                     const SizedBox(height: 10),
                     for (final tip in [
-                      '📏  Include leaves, flowers, and stems',
-                      '☀️  Use natural light when possible',
-                      '📐  Fill the frame with the plant',
-                      '🔍  Avoid blurry or dark images',
+                      '📏  ${l10n?.photoTip2 ?? 'Include leaves and flowers'}',
+                      '☀️  ${l10n?.photoTip3 ?? 'Use good lighting'}',
+                      '📐  ${l10n?.photoTip1 ?? 'Get close to the plant'}',
+                      '🔍  ${l10n?.photoTip4 ?? 'Avoid blurry shots'}',
                     ])
                       Padding(
                         padding: const EdgeInsets.only(bottom: 5),
@@ -332,6 +340,7 @@ class _ImagePreviewScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -341,8 +350,7 @@ class _ImagePreviewScreen extends ConsumerWidget {
           icon: const Icon(Icons.close),
           onPressed: () => ref.read(exploreProvider.notifier).reset(),
         ),
-        title: const Text('Preview'),
-      ),
+        title: Text(l10n?.discoverPlant ?? 'Preview'),      ),
       body: Column(
         children: [
           Expanded(
@@ -385,7 +393,7 @@ class _ImagePreviewScreen extends ConsumerWidget {
             child: Column(
               children: [
                 Text(
-                  'Ready to identify!',
+                  l10n?.identifyPlant ?? 'Ready to identify!',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: AppColors.darkGreen,
@@ -393,7 +401,7 @@ class _ImagePreviewScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Our AI will analyse your photo',
+                  l10n?.tagline ?? 'Our AI will analyse your photo',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.secondaryText,
                       ),
@@ -404,7 +412,7 @@ class _ImagePreviewScreen extends ConsumerWidget {
                   height: 52,
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.search_rounded),
-                    label: const Text('Identify This Plant'),
+                    label: Text(l10n?.identifyPlant ?? 'Identify This Plant'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.sageGreen,
                       foregroundColor: Colors.white,
@@ -419,7 +427,7 @@ class _ImagePreviewScreen extends ConsumerWidget {
                 const SizedBox(height: 10),
                 TextButton(
                   onPressed: () => ref.read(exploreProvider.notifier).reset(),
-                  child: const Text('Choose Another'),
+                  child: Text(l10n?.chooseAnother ?? 'Choose Another'),
                 ),
               ],
             ),
@@ -439,15 +447,16 @@ class _IdentificationLoadingScreen extends ConsumerStatefulWidget {
 }
 
 class _LoadingState extends ConsumerState<_IdentificationLoadingScreen> {
-  static const _messages = [
-    'Looking closely at your discovery...',
-    'Searching the botanical world...',
-    'Consulting the plant encyclopedia...',
-    'Preparing something interesting...',
-    'Almost there...',
-  ];
   int _msgIndex = 0;
   bool _disposed = false;
+
+  List<String> _messages(AppLocalizations? l10n) => [
+    l10n?.lookingClosely ?? 'Looking closely at your discovery...',
+    l10n?.searchingBotanical ?? 'Searching the botanical world...',
+    l10n?.consultingEncyclopedia ?? 'Consulting the plant encyclopedia...',
+    l10n?.preparingSomething ?? 'Preparing something interesting...',
+    l10n?.almostThere ?? 'Almost there...',
+  ];
 
   @override
   void initState() {
@@ -464,7 +473,8 @@ class _LoadingState extends ConsumerState<_IdentificationLoadingScreen> {
   void _cycle() {
     Future.delayed(const Duration(seconds: 2), () {
       if (!_disposed && mounted) {
-        setState(() => _msgIndex = (_msgIndex + 1) % _messages.length);
+        final l10n = AppLocalizations.of(context);
+        setState(() => _msgIndex = (_msgIndex + 1) % _messages(l10n).length);
         _cycle();
       }
     });
@@ -472,6 +482,8 @@ class _LoadingState extends ConsumerState<_IdentificationLoadingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final msgs = _messages(l10n);
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: Center(
@@ -496,7 +508,7 @@ class _LoadingState extends ConsumerState<_IdentificationLoadingScreen> {
                 key: ValueKey(_msgIndex),
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Text(
-                  _messages[_msgIndex],
+                  msgs[_msgIndex],
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.secondaryText,
@@ -508,7 +520,7 @@ class _LoadingState extends ConsumerState<_IdentificationLoadingScreen> {
             const SizedBox(height: 32),
             TextButton.icon(
               icon: const Icon(Icons.close_rounded, size: 16),
-              label: const Text('Cancel'),
+              label: Text(l10n?.cancel ?? 'Cancel'),
               style: TextButton.styleFrom(foregroundColor: AppColors.secondaryText),
               onPressed: () {
                 ref.read(exploreProvider.notifier).reset();
@@ -522,7 +534,7 @@ class _LoadingState extends ConsumerState<_IdentificationLoadingScreen> {
 }
 
 // ─── Result Screen ────────────────────────────────────────────────────────────
-class _IdentificationResultScreen extends ConsumerWidget {
+class _IdentificationResultScreen extends ConsumerStatefulWidget {
   final IdentificationResult result;
   final XFile imageFile;
 
@@ -531,6 +543,22 @@ class _IdentificationResultScreen extends ConsumerWidget {
     required this.imageFile,
   });
 
+  @override
+  ConsumerState<_IdentificationResultScreen> createState() => _IdentificationResultScreenState();
+}
+
+class _IdentificationResultScreenState extends ConsumerState<_IdentificationResultScreen> {
+  bool _isSaving = false;
+  bool _isSaved = false;
+  String _statusMessage = 'Saving to Journal...';
+  PlantCandidate? _selectedCandidate;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCandidate = widget.result.bestMatch;
+  }
+
   Color _confidenceColor(double s) {
     if (s >= 0.7) return AppColors.success;
     if (s >= 0.3) return AppColors.butterYellow;
@@ -538,64 +566,66 @@ class _IdentificationResultScreen extends ConsumerWidget {
   }
 
   String _confidenceLabel(double s) {
-    if (s >= 0.7) return 'Very Likely';
-    if (s >= 0.4) return 'Likely';
-    if (s >= 0.2) return 'Possible';
-    return 'Uncertain';
+    final l10n = AppLocalizations.of(context);
+    if (s >= 0.7) return l10n?.veryLikely ?? 'Very Likely';
+    if (s >= 0.4) return l10n?.likely ?? 'Likely';
+    if (s >= 0.2) return l10n?.possible ?? 'Possible';
+    return l10n?.uncertain ?? 'Uncertain';
   }
 
-  Future<void> _saveDiscovery(BuildContext context, WidgetRef ref, PlantCandidate candidate) async {
+  Future<void> _saveDiscovery(PlantCandidate candidate) async {
+    if (_isSaving || _isSaved) return;
+
+    setState(() {
+      _isSaving = true;
+      _statusMessage = 'Archiving specimen photo...';
+    });
+
     try {
       final auth = ref.read(authProvider);
       final currentUser = SupabaseService.instance.auth?.currentUser;
       final userId = currentUser?.id ?? auth.user?.id ?? 'guest-user';
       final aiService = ref.read(aiContentServiceProvider);
       final discoveryNotifier = ref.read(discoveriesProvider.notifier);
+      final imageStorage = ref.read(imageStorageServiceProvider);
       final discoveryId = const Uuid().v4();
 
       // 1. Copy high-res image to persistent documents directory
-      String persistentImagePath = imageFile.path;
-      try {
-        final docsDir = await getApplicationDocumentsDirectory();
-        final ext = imageFile.name.contains('.') ? imageFile.name.split('.').last : 'jpg';
-        final savedFile = File('${docsDir.path}/discovery_$discoveryId.$ext');
-        await File(imageFile.path).copy(savedFile.path);
-        persistentImagePath = savedFile.path;
-      } catch (e) {
-        debugPrint('[Mossy] Could not copy photo to docs dir: $e');
-      }
+      String persistentImagePath = await imageStorage.saveLocalSpecimen(widget.imageFile.path, discoveryId);
 
       // 2. If authenticated, optionally upload to Supabase storage bucket
-      if (currentUser != null && SupabaseService.instance.storage != null) {
-        try {
-          final file = File(persistentImagePath);
-          if (file.existsSync()) {
-            final storagePath = '${currentUser.id}/$discoveryId.jpg';
-            final bytes = await file.readAsBytes();
-            await SupabaseService.instance.storage!
-                .from('discovery-photos')
-                .uploadBinary(storagePath, bytes, fileOptions: const FileOptions(upsert: true));
-            final publicUrl = SupabaseService.instance.storage!
-                .from('discovery-photos')
-                .getPublicUrl(storagePath);
-            if (publicUrl.isNotEmpty) {
-              persistentImagePath = publicUrl;
-            }
-          }
-        } catch (e) {
-          debugPrint('[Mossy] Cloud image upload skipped/failed: $e');
+      if (currentUser != null) {
+        if (mounted) {
+          setState(() => _statusMessage = 'Syncing specimen photo to cloud...');
+        }
+        final cloudUrl = await imageStorage.uploadSpecimenToCloud(
+          localPath: persistentImagePath,
+          discoveryId: discoveryId,
+          userId: currentUser.id,
+        );
+        if (cloudUrl != null && cloudUrl.isNotEmpty) {
+          persistentImagePath = cloudUrl;
         }
       }
 
       // 3. Generate structured botanical lore from Gemini
+      if (mounted) {
+        setState(() => _statusMessage = 'Consulting Gemini botanical wisdom...');
+      }
+
+      final currentLocale = ref.read(localeProvider);
       final aiContent = await aiService.generateContent(
         candidate.scientificName,
         candidate.commonName,
         candidate.family,
-        'en',
+        currentLocale.languageCode,
       );
 
       // 4. Construct complete Discovery entry
+      if (mounted) {
+        setState(() => _statusMessage = 'Recording in your Nature Journal...');
+      }
+
       final discovery = Discovery(
         id: discoveryId,
         userId: userId,
@@ -609,197 +639,336 @@ class _IdentificationResultScreen extends ConsumerWidget {
         aiContent: aiContent,
       );
 
-      // 5. Save to journal
+      // 5. Save to journal and award points
       await discoveryNotifier.addDiscovery(discovery);
       await ref.read(userProfileProvider.notifier).addPoints(15, 'plant_identified');
 
-      if (context.mounted) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _isSaved = true;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('🌿 Discovery saved to your Journal! +15 points'),
             backgroundColor: AppColors.sageGreen,
+            duration: Duration(seconds: 3),
           ),
         );
-        ref.read(exploreProvider.notifier).reset();
       }
     } catch (e) {
-      if (context.mounted) {
+      debugPrint('[Mossy] Error saving discovery: $e');
+      if (mounted) {
+        setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not save: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Could not save: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final best = result.bestMatch;
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final candidate = _selectedCandidate ?? widget.result.bestMatch;
 
-    return Scaffold(
-      backgroundColor: AppColors.cream,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 240,
-            pinned: true,
-            backgroundColor: AppColors.cream,
-            foregroundColor: AppColors.darkGreen,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded),
-              onPressed: () => ref.read(exploreProvider.notifier).reset(),
-            ),
-            title: const Text('Identification Result'),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.file(File(imageFile.path), fit: BoxFit.cover),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, AppColors.cream.withAlpha(230)],
+    return PopScope(
+      canPop: !_isSaving,
+      child: Scaffold(
+        backgroundColor: AppColors.cream,
+        body: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 240,
+              pinned: true,
+              backgroundColor: AppColors.cream,
+              foregroundColor: AppColors.darkGreen,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: _isSaving ? null : () => ref.read(exploreProvider.notifier).reset(),
+              ),
+              title: Text(l10n?.identifyPlant ?? 'Identification Result'),
+              flexibleSpace: FlexibleSpaceBar(
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.file(File(widget.imageFile.path), fit: BoxFit.cover),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, AppColors.cream.withAlpha(230)],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.all(20),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                if (best != null) ...[
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              best.commonName.isNotEmpty ? best.commonName : best.scientificName,
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.darkGreen,
-                                  ),
-                            ),
-                            Text(
-                              best.scientificName,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontStyle: FontStyle.italic,
-                                    color: AppColors.secondaryText,
-                                  ),
-                            ),
-                            if (best.family.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.all(20),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  if (candidate != null) ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                'Family: ${best.family}',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+                                candidate.commonName.isNotEmpty ? candidate.commonName : candidate.scientificName,
+                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.darkGreen,
+                                    ),
                               ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _confidenceColor(best.score).withAlpha(30),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              _confidenceLabel(best.score),
-                              style: TextStyle(
-                                color: _confidenceColor(best.score),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
+                              Text(
+                                candidate.scientificName,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      fontStyle: FontStyle.italic,
+                                      color: AppColors.secondaryText,
+                                    ),
                               ),
-                            ),
-                            Text(
-                              '${(best.score * 100).toStringAsFixed(0)}%',
-                              style: TextStyle(color: _confidenceColor(best.score), fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                ],
-                if (result.candidates.length > 1) ...[
-                  Text(
-                    'Other possibilities',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 8),
-                  ...result.candidates.skip(1).take(3).map(
-                        (c) => Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
-                              BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 6),
+                              if (candidate.family.isNotEmpty)
+                                Text(
+                                  'Family: ${candidate.family}',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+                                ),
                             ],
                           ),
-                          child: Row(
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _confidenceColor(candidate.score).withAlpha(30),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      c.commonName.isNotEmpty ? c.commonName : c.scientificName,
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                                    ),
-                                    Text(
-                                      c.scientificName,
-                                      style: const TextStyle(
-                                        fontStyle: FontStyle.italic,
-                                        fontSize: 11,
-                                        color: AppColors.secondaryText,
-                                      ),
-                                    ),
-                                  ],
+                              Text(
+                                _confidenceLabel(candidate.score),
+                                style: TextStyle(
+                                  color: _confidenceColor(candidate.score),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
                                 ),
                               ),
-                              const SizedBox(width: 8),
                               Text(
-                                '${(c.score * 100).toStringAsFixed(0)}%',
-                                style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                                '${(candidate.score * 100).toStringAsFixed(0)}%',
+                                style: TextStyle(color: _confidenceColor(candidate.score), fontSize: 11),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                  const SizedBox(height: 16),
-                ],
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.bookmark_add_rounded),
-                    label: const Text('Save to Collection'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.sageGreen,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ],
                     ),
-                    onPressed: best != null ? () => _saveDiscovery(context, ref, best) : null,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextButton(
-                  onPressed: () => ref.read(exploreProvider.notifier).reset(),
-                  child: const Text('Identify Another Plant'),
-                ),
-              ]),
+                    const SizedBox(height: 20),
+                  ],
+
+                  if (widget.result.candidates.length > 1) ...[
+                    Text(
+                      l10n?.otherCandidates ?? 'Botanical candidates',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    ...widget.result.candidates.take(4).map(
+                      (c) {
+                        final isSelected = c.scientificName == candidate?.scientificName;
+                        return GestureDetector(
+                          onTap: _isSaving || _isSaved ? null : () => setState(() => _selectedCandidate = c),
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppColors.mintLight : Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isSelected ? AppColors.sageGreen : AppColors.border,
+                                width: isSelected ? 2 : 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 6),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                if (isSelected)
+                                  const Padding(
+                                    padding: EdgeInsets.only(right: 8),
+                                    child: Icon(Icons.check_circle_rounded, color: AppColors.darkGreen, size: 18),
+                                  ),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        c.commonName.isNotEmpty ? c.commonName : c.scientificName,
+                                        style: TextStyle(
+                                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                          fontSize: 13,
+                                          color: isSelected ? AppColors.darkGreen : null,
+                                        ),
+                                      ),
+                                      Text(
+                                        c.scientificName,
+                                        style: const TextStyle(
+                                          fontStyle: FontStyle.italic,
+                                          fontSize: 11,
+                                          color: AppColors.secondaryText,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${(c.score * 100).toStringAsFixed(0)}%',
+                                  style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // ─── Save / Loading Progress / Saved Success ──────────────
+                  if (_isSaving) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.darkGreen,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.darkGreen.withAlpha(50),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: Text(
+                              _statusMessage,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else if (_isSaved) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.mintLight,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.sageGreen.withAlpha(120), width: 1.5),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.check_circle_rounded, color: AppColors.darkGreen, size: 22),
+                          const SizedBox(width: 8),
+                          Text(
+                            l10n?.saveToCollection != null ? '${l10n!.saveToCollection} ✓' : 'Saved to your Journal! ✓',
+                            style: const TextStyle(
+                              color: AppColors.darkGreen,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.collections_bookmark_rounded, size: 18),
+                            label: Text(l10n?.myCollection ?? 'View Journal'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.darkGreen,
+                              side: const BorderSide(color: AppColors.sageGreen, width: 1.5),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            onPressed: () {
+                              ref.read(exploreProvider.notifier).reset();
+                              context.go('/collection');
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.camera_alt_rounded, size: 18),
+                            label: Text(l10n?.explore ?? 'Explore More'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.sageGreen,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            onPressed: () => ref.read(exploreProvider.notifier).reset(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.bookmark_add_rounded),
+                        label: Text(l10n?.saveToCollection ?? 'Save to Collection', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.sageGreen,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        onPressed: candidate != null ? () => _saveDiscovery(candidate) : null,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: () => ref.read(exploreProvider.notifier).reset(),
+                      child: Text(l10n?.identifyAnother ?? 'Identify Another Plant'),
+                    ),
+                  ],
+                ]),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

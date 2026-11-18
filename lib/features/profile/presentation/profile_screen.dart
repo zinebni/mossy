@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/mossy_card.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/achievement.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/auth_provider.dart';
@@ -13,6 +14,8 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final isFr = l10n?.home == 'Accueil';
     final profileAsync = ref.watch(userProfileProvider);
     final achievementsAsync = ref.watch(achievementsProvider);
     final discoveryStats = ref.watch(discoveryStatsProvider);
@@ -46,7 +49,7 @@ class ProfileScreen extends ConsumerWidget {
                     },
                   ),
                   const SizedBox(width: 4),
-                  Text('Profile', style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  Text(l10n?.profile ?? 'Profile', style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w800, color: AppColors.darkGreen)),
                   const Spacer(),
                   IconButton(
@@ -72,7 +75,7 @@ class ProfileScreen extends ConsumerWidget {
                   const SizedBox(width: 16),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(profile.username, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-                    Text('Explorer Level ${profile.explorerLevel}',
+                    Text(l10n?.explorerLevel(profile.explorerLevel) ?? 'Explorer Level ${profile.explorerLevel}',
                         style: const TextStyle(color: AppColors.sageGreen, fontWeight: FontWeight.w600)),
                     if (authState.isGuest || !authState.isAuthenticated)
                       GestureDetector(
@@ -85,15 +88,15 @@ class ProfileScreen extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: AppColors.butterYellow),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'Guest Mode (Sign in to save progress)',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
+                                isFr ? 'Mode invité (connectez-vous pour sauvegarder)' : 'Guest Mode (Sign in to save progress)',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
                               ),
-                              SizedBox(width: 4),
-                              Icon(Icons.arrow_forward_ios_rounded, size: 9, color: AppColors.darkGreen),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.arrow_forward_ios_rounded, size: 9, color: AppColors.darkGreen),
                             ],
                           ),
                         ),
@@ -106,7 +109,7 @@ class ProfileScreen extends ConsumerWidget {
               MossyCard(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    Text('Level ${profile.explorerLevel}',
+                    Text('${isFr ? 'Niveau' : 'Level'} ${profile.explorerLevel}',
                         style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.sageGreen, fontSize: 16)),
                     const Spacer(),
                     Text('${profile.totalPoints} pts',
@@ -123,7 +126,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text('${profile.pointsToNextLevel} pts to level ${profile.explorerLevel + 1}',
+                  Text('${profile.pointsToNextLevel} ${isFr ? 'pts vers le niveau' : 'pts to level'} ${profile.explorerLevel + 1}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText)),
                 ]),
               ).animate().fadeIn(delay: 150.ms),
@@ -133,20 +136,20 @@ class ProfileScreen extends ConsumerWidget {
                 crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 2.2,
                 children: [
-                  _StatCard(icon: Icons.eco_rounded, value: '${discoveryStats.totalDiscoveries}', label: 'Discoveries'),
-                  _StatCard(icon: Icons.star_rounded, value: '${profile.totalPoints}', label: 'Total Points'),
-                  _StatCard(icon: Icons.explore_rounded, value: '${discoveryStats.distinctFamilies}', label: 'Plant Families'),
-                  _StatCard(icon: Icons.favorite_rounded, value: '${discoveryStats.favoriteCount}', label: 'Favourites'),
+                  _StatCard(icon: Icons.eco_rounded, value: '${discoveryStats.totalDiscoveries}', label: l10n?.totalDiscoveries ?? 'Discoveries'),
+                  _StatCard(icon: Icons.star_rounded, value: '${profile.totalPoints}', label: l10n?.totalPoints ?? 'Total Points'),
+                  _StatCard(icon: Icons.explore_rounded, value: '${discoveryStats.distinctFamilies}', label: isFr ? 'Familles de plantes' : 'Plant Families'),
+                  _StatCard(icon: Icons.favorite_rounded, value: '${discoveryStats.favoriteCount}', label: l10n?.favorites ?? 'Favourites'),
                 ],
               ).animate().fadeIn(delay: 200.ms),
               const SizedBox(height: 20),
-              Text('Achievements', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              Text(l10n?.achievements ?? 'Achievements', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 10),
               achievementsAsync.when(
                 loading: () => const SizedBox(height: 60, child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.sageGreen))),
                 error: (e, _) => Text('$e'),
                 data: (achievements) => achievements.isEmpty
-                    ? const Text('No achievements yet. Start exploring!', style: TextStyle(color: AppColors.secondaryText))
+                    ? Text(isFr ? 'Aucun succès pour le moment. Commencez à explorer !' : 'No achievements yet. Start exploring!', style: const TextStyle(color: AppColors.secondaryText))
                     : GridView.count(
                         crossAxisCount: 3, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
                         crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.85,
@@ -159,8 +162,8 @@ class ProfileScreen extends ConsumerWidget {
                   const Icon(Icons.map_outlined, color: AppColors.sageGreen),
                   const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Discovery Map', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                    Text('See where you found your plants', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.secondaryText)),
+                    Text(l10n?.discoveryMap ?? 'Discovery Map', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(isFr ? 'Découvrez où vous avez trouvé vos plantes' : 'See where you found your plants', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.secondaryText)),
                   ])),
                   const Icon(Icons.chevron_right_rounded, color: AppColors.mutedText),
                 ]),

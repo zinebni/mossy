@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/mission.dart';
 import '../../../shared/models/user_mission.dart';
 import '../../../shared/providers/app_providers.dart';
@@ -32,6 +33,8 @@ class _AdventuresScreenState extends ConsumerState<AdventuresScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final isFr = l10n?.home == 'Accueil';
     final missionsAsync = ref.watch(missionsProvider);
 
     return Scaffold(
@@ -43,9 +46,15 @@ class _AdventuresScreenState extends ConsumerState<AdventuresScreen>
             child: Row(children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Adventures', style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800, color: AppColors.darkGreen)),
-                  Text('Complete challenges to earn points', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.secondaryText)),
+                  Text(
+                    l10n?.adventures ?? 'Adventures',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w800, color: AppColors.darkGreen),
+                  ),
+                  Text(
+                    isFr ? 'Relevez des défis pour gagner des points' : 'Complete challenges to earn points',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.secondaryText),
+                  ),
                 ]),
               ),
               const MascotWithAccessory(
@@ -59,7 +68,10 @@ class _AdventuresScreenState extends ConsumerState<AdventuresScreen>
           const SizedBox(height: 12),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(color: AppColors.mintGreen.withAlpha(80), borderRadius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(
+              color: AppColors.mintGreen.withAlpha(80),
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: TabBar(
               controller: _tabController,
               indicator: BoxDecoration(color: AppColors.sageGreen, borderRadius: BorderRadius.circular(12)),
@@ -67,10 +79,10 @@ class _AdventuresScreenState extends ConsumerState<AdventuresScreen>
               labelColor: Colors.white,
               unselectedLabelColor: AppColors.secondaryText,
               dividerColor: Colors.transparent,
-              tabs: const [
-                Tab(text: 'Daily'),
-                Tab(text: 'Challenges'),
-                Tab(text: 'Completed'),
+              tabs: [
+                Tab(text: l10n?.daily ?? 'Daily'),
+                Tab(text: l10n?.challenges ?? 'Challenges'),
+                Tab(text: l10n?.completed ?? 'Completed'),
               ],
             ),
           ),
@@ -82,9 +94,24 @@ class _AdventuresScreenState extends ConsumerState<AdventuresScreen>
               data: (missions) => TabBarView(
                 controller: _tabController,
                 children: [
-                  _MissionList(missions: missions.where((m) => m.mission?.category == MissionCategory.daily && !m.isCompleted).toList()),
-                  _MissionList(missions: missions.where((m) => m.mission?.category != MissionCategory.daily && !m.isCompleted).toList()),
-                  _MissionList(missions: missions.where((m) => m.isCompleted).toList(), isCompleted: true),
+                  _MissionList(
+                    missions: missions.where((m) => m.mission?.category == MissionCategory.daily && !m.isCompleted).toList(),
+                    isCompleted: false,
+                    isFr: isFr,
+                    l10n: l10n,
+                  ),
+                  _MissionList(
+                    missions: missions.where((m) => m.mission?.category != MissionCategory.daily && !m.isCompleted).toList(),
+                    isCompleted: false,
+                    isFr: isFr,
+                    l10n: l10n,
+                  ),
+                  _MissionList(
+                    missions: missions.where((m) => m.isCompleted).toList(),
+                    isCompleted: true,
+                    isFr: isFr,
+                    l10n: l10n,
+                  ),
                 ],
               ),
             ),
@@ -98,7 +125,15 @@ class _AdventuresScreenState extends ConsumerState<AdventuresScreen>
 class _MissionList extends ConsumerWidget {
   final List<UserMission> missions;
   final bool isCompleted;
-  const _MissionList({required this.missions, this.isCompleted = false});
+  final bool isFr;
+  final AppLocalizations? l10n;
+
+  const _MissionList({
+    required this.missions,
+    required this.isCompleted,
+    required this.isFr,
+    required this.l10n,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -107,11 +142,19 @@ class _MissionList extends ConsumerWidget {
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Icon(Icons.explore_outlined, size: 64, color: AppColors.mintGreen),
           const SizedBox(height: 16),
-          Text(isCompleted ? 'No completed adventures yet' : 'No adventures available',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.secondaryText)),
+          Text(
+            isCompleted
+                ? (isFr ? 'Aucune aventure terminée' : 'No completed adventures yet')
+                : (isFr ? 'Aucune aventure disponible' : 'No adventures available'),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.secondaryText),
+          ),
           const SizedBox(height: 8),
-          Text(isCompleted ? 'Complete challenges to see them here' : 'Check back soon for new adventures!',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText)),
+          Text(
+            isCompleted
+                ? (isFr ? 'Terminez des défis pour les voir ici' : 'Complete challenges to see them here')
+                : (isFr ? 'Revenez bientôt pour de nouvelles aventures !' : 'Check back soon for new adventures!'),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+          ),
         ]),
       );
     }
@@ -122,6 +165,8 @@ class _MissionList extends ConsumerWidget {
       itemBuilder: (context, i) => _MissionCard(
         userMission: missions[i],
         isCompleted: isCompleted,
+        isFr: isFr,
+        l10n: l10n,
       ).animate().fadeIn(delay: Duration(milliseconds: i * 80)).slideY(begin: 0.2),
     );
   }
@@ -130,14 +175,39 @@ class _MissionList extends ConsumerWidget {
 class _MissionCard extends ConsumerWidget {
   final UserMission userMission;
   final bool isCompleted;
-  const _MissionCard({required this.userMission, this.isCompleted = false});
+  final bool isFr;
+  final AppLocalizations? l10n;
+
+  const _MissionCard({
+    required this.userMission,
+    required this.isCompleted,
+    required this.isFr,
+    required this.l10n,
+  });
 
   Color _difficultyColor(MissionDifficulty? d) {
     switch (d) {
-      case MissionDifficulty.easy: return AppColors.mintGreen;
-      case MissionDifficulty.medium: return AppColors.butterYellow;
-      case MissionDifficulty.hard: return AppColors.peach;
-      default: return AppColors.mintGreen;
+      case MissionDifficulty.easy:
+        return AppColors.mintGreen;
+      case MissionDifficulty.medium:
+        return AppColors.butterYellow;
+      case MissionDifficulty.hard:
+        return AppColors.peach;
+      default:
+        return AppColors.mintGreen;
+    }
+  }
+
+  String _difficultyLabel(MissionDifficulty? d) {
+    switch (d) {
+      case MissionDifficulty.easy:
+        return l10n?.easy ?? 'easy';
+      case MissionDifficulty.medium:
+        return l10n?.medium ?? 'medium';
+      case MissionDifficulty.hard:
+        return l10n?.hard ?? 'hard';
+      default:
+        return '';
     }
   }
 
@@ -168,8 +238,10 @@ class _MissionCard extends ConsumerWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Expanded(
-                  child: Text(m?.title ?? userMission.missionId,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                  child: Text(
+                    m?.title ?? userMission.missionId,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
                 ),
                 if (isCompleted)
                   const Icon(Icons.check_circle_rounded, color: AppColors.sageGreen, size: 20)
@@ -177,24 +249,36 @@ class _MissionCard extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(color: diffColor.withAlpha(80), borderRadius: BorderRadius.circular(8)),
-                    child: Text(m?.difficulty.name ?? '', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                    child: Text(
+                      _difficultyLabel(m?.difficulty),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
                   ),
               ]),
               const SizedBox(height: 4),
-              Text(m?.description ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.secondaryText)),
+              Text(
+                m?.description ?? '',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.secondaryText),
+              ),
               const SizedBox(height: 8),
               Row(children: [
                 const Icon(Icons.star_rounded, color: AppColors.butterYellow, size: 16),
                 const SizedBox(width: 4),
-                Text('${m?.rewardPoints ?? 0} pts',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.secondaryText)),
+                Text(
+                  '${m?.rewardPoints ?? 0} pts',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.secondaryText),
+                ),
                 const Spacer(),
                 if (!isCompleted)
                   TextButton(
                     onPressed: () => _startMission(context, ref),
                     style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4)),
-                    child: const Text('Start', style: TextStyle(fontSize: 12, color: AppColors.sageGreen, fontWeight: FontWeight.w700)),
+                    child: Text(
+                      l10n?.startMission ?? 'Start',
+                      style: const TextStyle(fontSize: 12, color: AppColors.sageGreen, fontWeight: FontWeight.w700),
+                    ),
                   ),
               ]),
             ]),
@@ -205,11 +289,15 @@ class _MissionCard extends ConsumerWidget {
   }
 
   Future<void> _startMission(BuildContext context, WidgetRef ref) async {
+    final isFr = AppLocalizations.of(context)?.home == 'Accueil';
     try {
       await ref.read(missionsProvider.notifier).startMission(userMission.missionId);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('🎒 Adventure started!'), backgroundColor: AppColors.sageGreen),
+          SnackBar(
+            content: Text(isFr ? '🎒 Aventure commencée !' : '🎒 Adventure started!'),
+            backgroundColor: AppColors.sageGreen,
+          ),
         );
       }
     } catch (e) {

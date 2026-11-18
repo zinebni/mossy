@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/mossy_card.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/discovery.dart';
 import '../../../shared/models/mission.dart';
 import '../../../shared/models/user_mission.dart';
@@ -15,17 +16,6 @@ import '../../../shared/widgets/mascot/mascot_expression.dart';
 import '../../../shared/widgets/mascot/mascot_with_accessory.dart';
 import '../../../shared/widgets/mascot/mossy_mascot.dart';
 
-/// Production Home Screen for Mossy.
-///
-/// Combines:
-/// - Personalized time-of-day greeting & explorer level / points
-/// - Interactive Mossy mascot with rotational nature wisdom
-/// - Prominent "Explore & Discover" CTA
-/// - Daily nature challenge spotlight
-/// - Recent discoveries carousel with realistic empty state
-/// - Virtual garden sanctuary progress preview
-/// - Explorer achievement progress
-/// - Fast links to Discovery Map and Settings
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -36,7 +26,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _factIndex = 0;
 
-  static const List<String> _natureFacts = [
+  static const _factsEn = [
     'Mosses have survived on Earth for over 450 million years without true roots!',
     'Trees communicate with each other through subterranean fungal mycelium networks.',
     'Dandelions open their petals with morning light and tuck themselves in at sundown.',
@@ -45,21 +35,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     'Clover leaves fold upward at dusk in a botanical sleep movement called nyctinasty.',
   ];
 
-  String _getTimeGreeting() {
+  static const _factsFr = [
+    'Les mousses survivent sur Terre depuis plus de 450 millions d\'années sans véritables racines !',
+    'Les arbres communiquent entre eux via des réseaux souterrains de mycelium fongique.',
+    'Les pissenlits ouvrent leurs pétales avec la lumière du matin et se referment au coucher du soleil.',
+    'Les fougères existaient bien avant les plantes à fleurs — et même avant les dinosaures !',
+    'Regardez attentivement les fissures des trottoirs : des mousses pionnières créent du micro-sol pour d\'autres plantes.',
+    'Les feuilles de trèfle se plient vers le haut au crépuscule lors d\'un mouvement botanique appelé nyctinastie.',
+  ];
+
+  List<String> _getFacts(bool isFr) => isFr ? _factsFr : _factsEn;
+
+  String _getTimeGreeting(AppLocalizations? l10n) {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning,';
-    if (hour < 17) return 'Good afternoon,';
-    return 'Good evening,';
+    if (hour < 12) return l10n?.goodMorning ?? 'Good morning,';
+    if (hour < 17) return l10n?.goodAfternoon ?? 'Good afternoon,';
+    return l10n?.goodEvening ?? 'Good evening,';
   }
 
-  void _nextFact() {
+  void _nextFact(bool isFr) {
     setState(() {
-      _factIndex = (_factIndex + 1) % _natureFacts.length;
+      _factIndex = (_factIndex + 1) % _getFacts(isFr).length;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final isFr = l10n?.home == 'Accueil';
+    final facts = _getFacts(isFr);
+
     final profileAsync = ref.watch(userProfileProvider);
     final discoveriesAsync = ref.watch(discoveriesProvider);
     final missionsAsync = ref.watch(missionsProvider);
@@ -77,7 +82,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _getTimeGreeting(),
+                _getTimeGreeting(l10n),
                 style: GoogleFonts.nunito(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -85,7 +90,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
               Text(
-                profile.username.isNotEmpty ? profile.username : 'Nature Explorer',
+                profile.username.isNotEmpty
+                    ? profile.username
+                    : (isFr ? 'Explorateur Nature' : 'Nature Explorer'),
                 style: GoogleFonts.fraunces(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -96,23 +103,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           loading: () => Text(
             'Mossy',
-            style: GoogleFonts.fraunces(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: AppColors.darkGreen,
-            ),
+            style: GoogleFonts.fraunces(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.darkGreen),
           ),
           error: (_, __) => Text(
             'Mossy',
-            style: GoogleFonts.fraunces(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: AppColors.darkGreen,
-            ),
+            style: GoogleFonts.fraunces(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.darkGreen),
           ),
         ),
         actions: [
-          // Points pill
           profileAsync.maybeWhen(
             data: (profile) => Container(
               margin: const EdgeInsets.symmetric(vertical: 10),
@@ -129,11 +127,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(width: 4),
                   Text(
                     '${profile.totalPoints} pts',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.darkGreen,
-                    ),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
                   ),
                 ],
               ),
@@ -141,7 +135,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             orElse: () => const SizedBox.shrink(),
           ),
           const SizedBox(width: 8),
-          // Level badge
           profileAsync.maybeWhen(
             data: (profile) => Container(
               margin: const EdgeInsets.symmetric(vertical: 10),
@@ -158,11 +151,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(width: 4),
                   Text(
                     'Lvl ${profile.explorerLevel}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.darkGreen,
-                    ),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
                   ),
                 ],
               ),
@@ -172,7 +161,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.person_outline_rounded, color: AppColors.darkGreen),
-            tooltip: 'Profile',
+            tooltip: l10n?.profile ?? 'Profile',
             onPressed: () => context.push(AppRouter.profilePath),
           ),
           const SizedBox(width: 12),
@@ -195,32 +184,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Mossy Mascot Companion & Daily Wisdom
-                _buildMascotWisdomBanner(),
+                _buildMascotWisdomBanner(l10n, isFr, facts),
                 const SizedBox(height: 18),
-
-                // 2. Primary Explore CTA Card
-                _buildExploreHeroCard(context),
+                _buildExploreHeroCard(context, l10n, isFr),
                 const SizedBox(height: 24),
-
-                // 3. Daily Adventure Challenge Spotlight
-                _buildDailyAdventureSection(context, missionsAsync),
+                _buildDailyAdventureSection(context, l10n, isFr, missionsAsync),
                 const SizedBox(height: 24),
-
-                // 4. Recent Discoveries Horizontal Carousel
-                _buildRecentDiscoveriesSection(context, discoveriesAsync),
+                _buildRecentDiscoveriesSection(context, l10n, isFr, discoveriesAsync),
                 const SizedBox(height: 24),
-
-                // 5. Garden Sanctuary Progress Card
-                _buildGardenPreviewSection(context, gardenAsync),
+                _buildGardenPreviewSection(context, l10n, isFr, gardenAsync),
                 const SizedBox(height: 24),
-
-                // 6. Explorer Badges & Achievement Summary
-                _buildAchievementSummarySection(context, achievementsAsync),
+                _buildAchievementSummarySection(context, l10n, isFr, achievementsAsync),
                 const SizedBox(height: 24),
-
-                // 7. Quick Navigation Tiles (Map & Settings)
-                _buildQuickLinksRow(context),
+                _buildQuickLinksRow(context, l10n, isFr),
                 const SizedBox(height: 32),
               ],
             ),
@@ -231,9 +207,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // ─── 1. Mascot & Wisdom Card ───────────────────────────────────────────────
-  Widget _buildMascotWisdomBanner() {
+  Widget _buildMascotWisdomBanner(AppLocalizations? l10n, bool isFr, List<String> facts) {
     return GestureDetector(
-      onTap: _nextFact,
+      onTap: () => _nextFact(isFr),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -241,19 +217,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: AppColors.borderLight),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(8),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
+            BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 10, offset: const Offset(0, 3)),
           ],
         ),
         child: Row(
           children: [
-            const MossyMascot(
-              expression: MascotExpression.happy,
-              size: 80,
-            ),
+            const MossyMascot(expression: MascotExpression.happy, size: 80),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -263,17 +232,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.mintGreen,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        decoration: BoxDecoration(color: AppColors.mintGreen, borderRadius: BorderRadius.circular(8)),
                         child: Text(
-                          'Mossy’s Field Notes',
-                          style: GoogleFonts.nunito(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.deepSage,
-                          ),
+                          isFr ? 'Notes de terrain de Mossy' : 'Mossy\'s Field Notes',
+                          style: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.deepSage),
                         ),
                       ),
                       const Spacer(),
@@ -282,13 +244,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    _natureFacts[_factIndex],
-                    style: GoogleFonts.nunito(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkGreen,
-                      height: 1.35,
-                    ),
+                    facts[_factIndex % facts.length],
+                    style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.darkGreen, height: 1.35),
                   ),
                 ],
               ),
@@ -300,7 +257,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // ─── 2. Explore Hero Card ──────────────────────────────────────────────────
-  Widget _buildExploreHeroCard(BuildContext context) {
+  Widget _buildExploreHeroCard(BuildContext context, AppLocalizations? l10n, bool isFr) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -312,11 +269,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(
-            color: AppColors.sageGreen.withAlpha(80),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
+          BoxShadow(color: AppColors.sageGreen.withAlpha(80), blurRadius: 14, offset: const Offset(0, 6)),
         ],
       ),
       child: Column(
@@ -329,22 +282,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Ready to explore?',
-                      style: GoogleFonts.nunito(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.mintGreen,
-                      ),
+                      isFr ? 'Prêt à explorer ?' : 'Ready to explore?',
+                      style: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.mintGreen),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Look closer.\nDiscover more.',
-                      style: GoogleFonts.fraunces(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        height: 1.15,
-                      ),
+                      isFr ? 'Regardez de près.\nDécouvrez plus.' : 'Look closer.\nDiscover more.',
+                      style: GoogleFonts.fraunces(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white, height: 1.15),
                     ),
                   ],
                 ),
@@ -359,12 +303,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const SizedBox(height: 14),
           Text(
-            'Photograph any flower, leaf, or tree to identify species and unlock botanical lore.',
-            style: GoogleFonts.nunito(
-              fontSize: 13,
-              color: Colors.white.withAlpha(230),
-              fontWeight: FontWeight.w500,
-            ),
+            isFr
+                ? 'Photographiez n\'importe quelle fleur, feuille ou arbre pour identifier l\'espèce et découvrir son histoire botanique.'
+                : 'Photograph any flower, leaf, or tree to identify species and unlock botanical lore.',
+            style: GoogleFonts.nunito(fontSize: 13, color: Colors.white.withAlpha(230), fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -373,20 +315,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               onPressed: () => context.go(AppRouter.explorePath),
               icon: const Icon(Icons.camera_alt_rounded, size: 20, color: AppColors.darkGreen),
               label: Text(
-                'Identify a Plant',
-                style: GoogleFonts.nunito(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.darkGreen,
-                ),
+                l10n?.identifyPlant ?? 'Identify a Plant',
+                style: GoogleFonts.nunito(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.darkGreen),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.butterYellow,
                 foregroundColor: AppColors.darkGreen,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
             ),
@@ -399,41 +335,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // ─── 3. Daily Adventure Spotlight ──────────────────────────────────────────
   Widget _buildDailyAdventureSection(
     BuildContext context,
+    AppLocalizations? l10n,
+    bool isFr,
     AsyncValue<List<UserMission>> missionsAsync,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          title: 'Daily Adventure',
-          actionLabel: 'See all',
+          title: l10n?.dailyChallenge ?? 'Daily Adventure',
+          actionLabel: isFr ? 'Voir tout' : 'See all',
           onTap: () => context.go(AppRouter.adventuresPath),
         ),
         const SizedBox(height: 12),
         missionsAsync.when(
           loading: () => const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(color: AppColors.sageGreen),
-            ),
+            child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(color: AppColors.sageGreen)),
           ),
-          error: (e, _) => Text('Could not load adventure: $e'),
+          error: (e, _) => Text(isFr ? 'Impossible de charger l\'aventure' : 'Could not load adventure: $e'),
           data: (missions) {
-            // Find active or first daily mission
             final daily = missions.firstWhere(
               (m) => m.mission?.category == MissionCategory.daily && !m.isCompleted,
               orElse: () => missions.isNotEmpty
                   ? missions.first
-                  : const UserMission(
+                  : UserMission(
                       id: 'demo-1',
                       userId: 'demo',
                       missionId: 'mission-001',
                       status: UserMissionStatus.available,
                       mission: Mission(
                         id: 'mission-001',
-                        title: 'Find a Golden Yellow Flower',
-                        description:
-                            'Search sunny lawn edges, meadows, or gardens for bright yellow petals.',
+                        title: isFr ? 'Trouver une fleur jaune dorée' : 'Find a Golden Yellow Flower',
+                        description: isFr
+                            ? 'Cherchez dans les jardins ensoleillés des pétales jaune vif.'
+                            : 'Search sunny lawn edges, meadows, or gardens for bright yellow petals.',
                         category: MissionCategory.daily,
                         difficulty: MissionDifficulty.easy,
                         rewardPoints: 60,
@@ -444,6 +379,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             final missionObj = daily.mission;
             final isCompleted = daily.isCompleted;
 
+            String difficultyLabel(MissionDifficulty? d) {
+              if (d == null) return '';
+              switch (d) {
+                case MissionDifficulty.easy:
+                  return l10n?.easy.toUpperCase() ?? 'EASY';
+                case MissionDifficulty.medium:
+                  return l10n?.medium.toUpperCase() ?? 'MEDIUM';
+                case MissionDifficulty.hard:
+                  return l10n?.hard.toUpperCase() ?? 'HARD';
+              }
+            }
+
             return MossyCard(
               onTap: () => context.go(AppRouter.adventuresPath),
               child: Column(
@@ -453,17 +400,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.lavender,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        decoration: BoxDecoration(color: AppColors.lavender, borderRadius: BorderRadius.circular(8)),
                         child: Text(
-                          missionObj?.difficulty.name.toUpperCase() ?? 'EASY',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF6B4B9A),
-                          ),
+                          difficultyLabel(missionObj?.difficulty),
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF6B4B9A)),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -480,11 +420,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             const SizedBox(width: 3),
                             Text(
                               '+${missionObj?.rewardPoints ?? 50} pts',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.darkGreen,
-                              ),
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
                             ),
                           ],
                         ),
@@ -498,22 +434,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    missionObj?.title ?? 'Nature Quest',
-                    style: GoogleFonts.nunito(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.darkGreen,
-                    ),
+                    missionObj?.title ?? (isFr ? 'Quête nature' : 'Nature Quest'),
+                    style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.darkGreen),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    missionObj?.description ?? 'Explore outdoor greens and complete nature challenges.',
+                    missionObj?.description ?? (isFr ? 'Explorez la nature et relevez des défis.' : 'Explore outdoor greens and complete nature challenges.'),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.nunito(
-                      fontSize: 13,
-                      color: AppColors.secondaryText,
-                    ),
+                    style: GoogleFonts.nunito(fontSize: 13, color: AppColors.secondaryText),
                   ),
                 ],
               ),
@@ -527,25 +456,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // ─── 4. Recent Discoveries Section ─────────────────────────────────────────
   Widget _buildRecentDiscoveriesSection(
     BuildContext context,
+    AppLocalizations? l10n,
+    bool isFr,
     AsyncValue<List<Discovery>> discoveriesAsync,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          title: 'Recent Discoveries',
-          actionLabel: 'View journal',
+          title: l10n?.recentDiscoveries ?? 'Recent Discoveries',
+          actionLabel: isFr ? 'Voir le journal' : 'View journal',
           onTap: () => context.go(AppRouter.collectionPath),
         ),
         const SizedBox(height: 12),
         discoveriesAsync.when(
           loading: () => const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(color: AppColors.sageGreen),
-            ),
+            child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(color: AppColors.sageGreen)),
           ),
-          error: (e, _) => Text('Could not load discoveries: $e'),
+          error: (e, _) => Text(isFr ? 'Impossible de charger les découvertes' : 'Could not load discoveries: $e'),
           data: (discoveries) {
             if (discoveries.isEmpty) {
               return Container(
@@ -561,27 +489,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const Icon(Icons.eco_outlined, size: 48, color: AppColors.mintGreen),
                     const SizedBox(height: 8),
                     Text(
-                      'No discoveries yet!',
-                      style: GoogleFonts.fraunces(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.darkGreen,
-                      ),
+                      l10n?.noDiscoveries ?? 'No discoveries yet!',
+                      style: GoogleFonts.fraunces(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.darkGreen),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Step outside and photograph your first plant to begin your nature journal.',
+                      l10n?.startExploring ?? 'Step outside and photograph your first plant to begin your nature journal.',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.nunito(
-                        fontSize: 12,
-                        color: AppColors.secondaryText,
-                      ),
+                      style: GoogleFonts.nunito(fontSize: 12, color: AppColors.secondaryText),
                     ),
                     const SizedBox(height: 14),
                     OutlinedButton.icon(
                       onPressed: () => context.go(AppRouter.explorePath),
                       icon: const Icon(Icons.add_a_photo_outlined, size: 16),
-                      label: const Text('Discover Now'),
+                      label: Text(isFr ? 'Découvrir maintenant' : 'Discover Now'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.sageGreen,
                         side: const BorderSide(color: AppColors.sageGreen),
@@ -610,11 +531,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(18),
                         boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withAlpha(8),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
+                          BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 2)),
                         ],
                       ),
                       child: Column(
@@ -649,22 +566,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   d.commonName,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                    color: AppColors.darkGreen,
-                                  ),
+                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.darkGreen),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   d.scientificName,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontStyle: FontStyle.italic,
-                                    fontSize: 10,
-                                    color: AppColors.secondaryText,
-                                  ),
+                                  style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 10, color: AppColors.secondaryText),
                                 ),
                               ],
                             ),
@@ -683,27 +592,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // ─── 5. Garden Sanctuary Preview Section ───────────────────────────────────
-  Widget _buildGardenPreviewSection(
-    BuildContext context,
-    AsyncValue<dynamic> gardenAsync,
-  ) {
+  Widget _buildGardenPreviewSection(BuildContext context, AppLocalizations? l10n, bool isFr, AsyncValue<dynamic> gardenAsync) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          title: 'Virtual Garden',
-          actionLabel: 'Visit garden',
+          title: l10n?.yourGarden ?? 'Virtual Garden',
+          actionLabel: isFr ? 'Visiter le jardin' : 'Visit garden',
           onTap: () => context.go(AppRouter.gardenPath),
         ),
         const SizedBox(height: 12),
         gardenAsync.when(
           loading: () => const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(color: AppColors.sageGreen),
-            ),
+            child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(color: AppColors.sageGreen)),
           ),
-          error: (e, _) => Text('Could not load garden: $e'),
+          error: (e, _) => Text('$e'),
           data: (garden) {
             final level = garden.gardenLevel as int;
             final stageName = garden.stageName as String;
@@ -716,10 +619,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Container(
                     width: 60,
                     height: 60,
-                    decoration: BoxDecoration(
-                      color: AppColors.mintGreen.withAlpha(120),
-                      shape: BoxShape.circle,
-                    ),
+                    decoration: BoxDecoration(color: AppColors.mintGreen.withAlpha(120), shape: BoxShape.circle),
                     child: const Icon(Icons.park_rounded, color: AppColors.sageGreen, size: 32),
                   ),
                   const SizedBox(width: 14),
@@ -730,32 +630,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         Row(
                           children: [
                             Text(
-                              'Level $level Sanctuary',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                                color: AppColors.darkGreen,
-                              ),
+                              isFr ? 'Niveau $level — Sanctuaire' : 'Level $level Sanctuary',
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.darkGreen),
                             ),
                             const Spacer(),
                             Text(
                               '${(progress * 100).toInt()}%',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.sageGreen,
-                              ),
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.sageGreen),
                             ),
                           ],
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          stageName,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.secondaryText,
-                          ),
-                        ),
+                        Text(stageName, style: const TextStyle(fontSize: 12, color: AppColors.secondaryText)),
                         const SizedBox(height: 8),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(6),
@@ -781,14 +667,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // ─── 6. Explorer Badges & Achievement Summary ──────────────────────────────
   Widget _buildAchievementSummarySection(
     BuildContext context,
+    AppLocalizations? l10n,
+    bool isFr,
     AsyncValue<dynamic> achievementsAsync,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          title: 'Explorer Badges',
-          actionLabel: 'View all',
+          title: l10n?.achievements ?? 'Explorer Badges',
+          actionLabel: isFr ? 'Voir tout' : 'View all',
           onTap: () => context.push(AppRouter.profilePath),
         ),
         const SizedBox(height: 12),
@@ -807,10 +695,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Container(
                     width: 52,
                     height: 52,
-                    decoration: BoxDecoration(
-                      color: AppColors.butterYellow.withAlpha(70),
-                      shape: BoxShape.circle,
-                    ),
+                    decoration: BoxDecoration(color: AppColors.butterYellow.withAlpha(70), shape: BoxShape.circle),
                     child: const Icon(Icons.military_tech_rounded, color: Color(0xFFC4971A), size: 28),
                   ),
                   const SizedBox(width: 14),
@@ -819,22 +704,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '$unlocked of $total Badges Earned',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: AppColors.darkGreen,
-                          ),
+                          isFr ? '$unlocked sur $total badges obtenus' : '$unlocked of $total Badges Earned',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.darkGreen),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           unlocked == total
-                              ? 'Master Botanist! All achievements completed.'
-                              : 'Keep exploring nature to unlock your next milestone.',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.secondaryText,
-                          ),
+                              ? (isFr ? 'Botaniste maître ! Tous les succès complétés.' : 'Master Botanist! All achievements completed.')
+                              : (isFr ? 'Continuez à explorer pour débloquer votre prochaine étape.' : 'Keep exploring nature to unlock your next milestone.'),
+                          style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
                         ),
                       ],
                     ),
@@ -850,7 +728,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // ─── 7. Quick Links (Map & Settings) ───────────────────────────────────────
-  Widget _buildQuickLinksRow(BuildContext context) {
+  Widget _buildQuickLinksRow(BuildContext context, AppLocalizations? l10n, bool isFr) {
     return Row(
       children: [
         Expanded(
@@ -867,21 +745,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.mintGreen.withAlpha(80),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                    decoration: BoxDecoration(color: AppColors.mintGreen.withAlpha(80), borderRadius: BorderRadius.circular(10)),
                     child: const Icon(Icons.map_outlined, color: AppColors.sageGreen, size: 20),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Discovery Map',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: AppColors.darkGreen,
-                      ),
+                      l10n?.discoveryMap ?? 'Discovery Map',
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.darkGreen),
                     ),
                   ),
                 ],
@@ -904,21 +775,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.lavender.withAlpha(80),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                    decoration: BoxDecoration(color: AppColors.lavender.withAlpha(80), borderRadius: BorderRadius.circular(10)),
                     child: const Icon(Icons.settings_outlined, color: Color(0xFF7E60A8), size: 20),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Settings',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: AppColors.darkGreen,
-                      ),
+                      l10n?.settings ?? 'Settings',
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.darkGreen),
                     ),
                   ),
                 ],
@@ -931,32 +795,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // ─── Header Helper ─────────────────────────────────────────────────────────
-  Widget _buildSectionHeader({
-    required String title,
-    required String actionLabel,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildSectionHeader({required String title, required String actionLabel, required VoidCallback onTap}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          title,
-          style: GoogleFonts.fraunces(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppColors.darkGreen,
-          ),
-        ),
+        Text(title, style: GoogleFonts.fraunces(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.darkGreen)),
         GestureDetector(
           onTap: onTap,
-          child: Text(
-            actionLabel,
-            style: GoogleFonts.nunito(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.sageGreen,
-            ),
-          ),
+          child: Text(actionLabel, style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.sageGreen)),
         ),
       ],
     );

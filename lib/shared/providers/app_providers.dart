@@ -8,6 +8,7 @@ import '../../services/ai_content_service.dart';
 import '../../services/camera_service.dart';
 import '../../services/discovery_service.dart';
 import '../../services/garden_service.dart';
+import '../../services/image_storage_service.dart';
 import '../../services/location_service.dart';
 import '../../services/mission_service.dart';
 import '../../services/plant_identification_service.dart';
@@ -108,6 +109,12 @@ final cameraServiceProvider = Provider<CameraService>((ref) {
 /// Provider for optional geolocation service.
 final locationServiceProvider = Provider<LocationService>((ref) {
   return LocationService();
+});
+
+/// Provider for botanical specimen photo persistence and cloud storage.
+final imageStorageServiceProvider = Provider<ImageStorageService>((ref) {
+  final supabase = ref.watch(supabaseServiceProvider);
+  return ImageStorageService(supabaseService: supabase);
 });
 
 // ============================================================================

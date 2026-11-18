@@ -7,7 +7,11 @@ import '../shared/models/plant_candidate.dart';
 
 /// Abstract interface for plant identification providers.
 abstract class PlantIdentificationService {
-  Future<IdentificationResult> identifyPlant(Uint8List imageBytes, String fileName);
+  Future<IdentificationResult> identifyPlant(
+    Uint8List imageBytes,
+    String fileName, {
+    String language = 'en',
+  });
 }
 
 // ============================================================================
@@ -28,15 +32,21 @@ class PlantNetIdentificationService implements PlantIdentificationService {
   @override
   Future<IdentificationResult> identifyPlant(
     Uint8List imageBytes,
-    String fileName,
-  ) async {
+    String fileName, {
+    String language = 'en',
+  }) async {
     if (apiKey.isEmpty) {
       debugPrint('[PlantNet] No API key — falling back to demo service.');
-      return await DemoPlantIdentificationService().identifyPlant(imageBytes, fileName);
+      return await DemoPlantIdentificationService().identifyPlant(
+        imageBytes,
+        fileName,
+        language: language,
+      );
     }
 
     try {
-      final uri = Uri.parse('$_baseUrl?api-key=$apiKey&nb-results=$_maxCandidates&lang=en');
+      final langCode = language.startsWith('fr') ? 'fr' : 'en';
+      final uri = Uri.parse('$_baseUrl?api-key=$apiKey&nb-results=$_maxCandidates&lang=$langCode');
 
       final request = http.MultipartRequest('POST', uri);
 
@@ -326,11 +336,35 @@ class DemoPlantIdentificationService implements PlantIdentificationService {
     ],
   ];
 
+  static const Map<String, String> _frenchCommonNames = {
+    'bellis perennis': 'Pâquerette',
+    'leucanthemum vulgare': 'Marguerite commune',
+    'tripleurospermum inodorum': 'Camomille inodore',
+    'erigeron annuus': 'Vergerette annuelle',
+    'taraxacum officinale': 'Pissenlit commun',
+    'sonchus oleraceus': 'Laiteron maraîcher',
+    'hieracium pilosella': 'Piloselle',
+    'hypochaeris radicata': 'Porcelle enracinée',
+    'rosa canina': 'Églantier commun',
+    'rosa rubiginosa': 'Églantier odorant',
+    'rubus fruticosus': 'Ronce commune',
+    'lavandula angustifolia': 'Lavande vraie',
+    'lavandula stoechas': 'Lavande papillon',
+    'salvia officinalis': 'Sauge officinale',
+    'trifolium repens': 'Trèfle blanc',
+    'trifolium pratense': 'Trèfle des prés',
+    'medicago lupulina': 'Minette',
+    'hedera helix': 'Lierre grimpant',
+    'hedera hibernica': 'Lierre d\'Irlande',
+    'parthenocissus tricuspidata': 'Vigne vierge',
+  };
+
   @override
   Future<IdentificationResult> identifyPlant(
     Uint8List imageBytes,
-    String fileName,
-  ) async {
+    String fileName, {
+    String language = 'en',
+  }) async {
     await Future.delayed(const Duration(milliseconds: 1400));
 
     final poolIndex = imageBytes.isNotEmpty
@@ -338,19 +372,33 @@ class DemoPlantIdentificationService implements PlantIdentificationService {
         : _random.nextInt(_candidatePools.length);
 
     final selectedPool = _candidatePools[poolIndex];
-    final bestMatch = selectedPool.first;
+    final isFrench = language.startsWith('fr');
+
+    final localizedCandidates = selectedPool.map((c) {
+      final frenchName = isFrench ? _frenchCommonNames[c.scientificName.toLowerCase()] : null;
+      return PlantCandidate(
+        scientificName: c.scientificName,
+        commonName: frenchName ?? c.commonName,
+        family: c.family,
+        score: c.score,
+        imageUrl: c.imageUrl,
+      );
+    }).toList();
+
+    final bestMatch = localizedCandidates.first;
 
     return IdentificationResult(
       status: bestMatch.score > 0.75
           ? IdentificationStatus.identified
           : IdentificationStatus.uncertain,
-      candidates: selectedPool,
+      candidates: localizedCandidates,
       bestMatch: bestMatch,
       rawResponse: {
         'provider': 'mossy_demo_engine',
         'matched_pool': poolIndex,
         'image_size': imageBytes.length,
         'filename': fileName,
+        'language': language,
       },
     );
   }

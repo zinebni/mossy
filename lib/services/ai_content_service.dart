@@ -43,9 +43,10 @@ class GeminiAiContentService implements AiContentService {
           .generateContent(scientificName, commonName, family, language);
     }
 
-    final langNote = language == 'fr'
-        ? 'Respond entirely in French.'
-        : 'Respond in English.';
+    final isFrench = language.startsWith('fr');
+    final langNote = isFrench
+        ? 'RÈGLE IMPÉRATIVE DE LANGUE : Tu DOIS rédiger l\'intégralité absolue de ta réponse en FRANÇAIS (France). Tous les champs textuels (introduction, description, funFacts, observationTips, safetyNote) DOIVENT impérativement être écrits en français soigné, éducatif et poétique.'
+        : 'MANDATORY LANGUAGE RULE: You MUST write your entire response in English. All text fields (introduction, description, funFacts, observationTips, safetyNote) MUST be written in clear, engaging English.';
 
     final prompt = '''
 You are an enthusiastic botanical educator writing for a nature discovery app called Mossy.
@@ -309,6 +310,111 @@ class DemoAiContentService implements AiContentService {
     ),
   };
 
+  static final Map<String, AiContent> _curatedKnowledgeFr = {
+    'bellis perennis': const AiContent(
+      introduction:
+          'La joyeuse Pâquerette est l\'une des fleurs sauvages les plus emblématiques de nos prairies, ouvrant ses pétales dès l\'apparition des premiers rayons du soleil.',
+      description:
+          'Bellis perennis est une plante herbacée vivace formant une rosette basale de feuilles spatulées. Ses capitules floraux portent des fleurons ligulés blanc pur teintés de pourpre autour d\'un cœur éclatant de fleurons tubulaires jaunes.',
+      funFacts: [
+        'Son nom français "Pâquerette" vient de sa floraison abondante autour de la fête de Pâques au printemps.',
+        'Ses feuilles et pétales sont riches en vitamine C et étaient traditionnellement dégustés en salades sauvages revigorantes.',
+        'Chaque fleur de pâquerette n\'est pas une fleur unique, mais une inflorescence composée réunissant plus d\'une centaine de fleurs minuscules.',
+      ],
+      observationTips: [
+        'Observez comment le capitule suit le soleil d\'est en ouest tout au long de la journée (héliotropisme).',
+        'À l\'aide d\'une loupe, découvrez les minuscules fleurons du disque jaune qui s\'ouvrent progressivement de l\'extérieur vers le centre.',
+      ],
+      safetyNote:
+          'Plante généralement inoffensive, mais les personnes allergiques aux Astéracées doivent éviter le contact direct.',
+    ),
+    'taraxacum officinale': const AiContent(
+      introduction:
+          'Souvent qualifié de simple mauvaise herbe, le Pissenlit est en réalité un trésor nutritionnel exceptionnel et une source précoce de nectar vitale pour les pollinisateurs.',
+      description:
+          'Une plante vivace à racine pivotante de la famille des Astéracées. Elle présente des feuilles découpées en rosette et des tiges creuses à sève laiteuse portant de superbes capitules jaunes qui se métamorphosent en globes soyeux d\'aigrettes.',
+      funFacts: [
+        'Son nom "Pissenlit" fait référence à ses propriétés diurétiques bien connues en phytothérapie traditionnelle.',
+        'Chaque partie du pissenlit—des racines torréfiées aux fleurs dorées—est comestible et gorgée de vitamines A, C et K.',
+        'Les graines peuvent voyager à plus de 8 kilomètres portées par la brise grâce à leur aigrette en parachute naturel.',
+      ],
+      observationTips: [
+        'Remarquez comment les fleurs se referment hermétiquement avant la pluie pour protéger leur précieux pollen.',
+        'Observez la structure géométrique parfaite du capitule plumeux avant la dispersion des graines par le vent.',
+      ],
+      safetyNote:
+          'Le latex blanc qui s\'écoule de la tige peut provoquer de légères irritations cutanées chez les personnes sensibles.',
+    ),
+    'rosa canina': const AiContent(
+      introduction:
+          'L\'Églantier ou rosier sauvage est un arbuste vigoureux qui orne les haies champêtres de délicates fleurs rose pâle au parfum subtil.',
+      description:
+          'Un arbrisseau épineux atteignant jusqu\'à 3 mètres de hauteur, muni d\'aiguillons recourbés qui lui permettent de grimper. Il porte des feuilles pennées, de grandes fleurs à 5 pétales et de superbes baies rouge vif appelées cynorrhodons en automne.',
+      funFacts: [
+        'Le cynorrhodon est surnommé "gratte-cul" en raison des petits poils irritants entourant ses graines.',
+        'Les baies d\'églantier contiennent jusqu\'à 20 fois plus de vitamine C que les oranges fraîches.',
+        'Pline l\'Ancien rapportait que sa racine était jadis utilisée pour guérir les morsures de chiens enragés.',
+      ],
+      observationTips: [
+        'Remarquez les aiguillons crochus agissant comme de véritables grappins d\'escalade naturelle.',
+        'À la fin de l\'automne, observez les merles et grives qui viennent se nourrir des cynorrhodons mûrs.',
+      ],
+      safetyNote:
+          'Les poils entourant les graines internes doivent impérativement être retirés avant toute préparation culinaire.',
+    ),
+    'lavandula angustifolia': const AiContent(
+      introduction:
+          'La Lavande vraie est célèbre dans le monde entier pour ses huiles essentielles apaisantes, son feuillage vert argenté et ses épis floraux bleu-violet.',
+      description:
+          'Un sous-arbrisseau aromatique vivace originaire des collines rocailleuses méditerranéennes. Ses feuilles étroites sont couvertes de poils fins et ses tiges portent des épis denses de fleurs bilabiées riches en nectar.',
+      funFacts: [
+        'Les Romains parfumaient déjà leurs thermes et leurs vêtements avec la lavande, d\'où son nom issu du latin "lavare" (laver).',
+        'Un seul buisson de lavande en pleine floraison peut nourrir des centaines d\'abeilles chaque jour.',
+        'L\'huile essentielle de lavande fine est reconnue pour ses vertus calmantes et purifiantes exceptionnelles.',
+      ],
+      observationTips: [
+        'Frottez délicatement une feuille entre vos doigts pour libérer les essences aromatiques camphrées.',
+        'Comptez les verticilles de fleurs le long d\'un épi : on en dénombre généralement entre 6 et 10 anneaux superposés.',
+      ],
+      safetyNote:
+          'Plante sécuritaire, bien que l\'huile essentielle pure doive être diluée avant application cutanée chez les enfants.',
+    ),
+    'trifolium repens': const AiContent(
+      introduction:
+          'Le Trèfle blanc est un couvre-sol nourricier qui enrichit naturellement la terre en fixant l\'azote de l\'air dans le sol.',
+      description:
+          'Une plante herbacée vivace rampante qui s\'étend par des tiges stolonifères. Ses feuilles trifoliées arborent souvent une marque blanche caractéristique en croissant, accompagnées de têtes florales globuleuses blanches très parfumées.',
+      funFacts: [
+        'Le trèfle vit en symbiose avec des bactéries Rhizobium qui transforment l\'azote de l\'air en engrais naturel.',
+        'La probabilité de trouver spontanément un trèfle à quatre feuilles dans la nature est d\'environ 1 sur 10 000.',
+        'C\'est l\'une des plantes mellifères les plus précieuses au monde pour la production d\'un miel clair et délicat.',
+      ],
+      observationTips: [
+        'Examinez les feuilles au crépuscule pour observer leur repliement nocturne protecteur (sommeil foliaire).',
+        'Recherchez la marque en V blanc argenté présente sur chaque foliole.',
+      ],
+      safetyNote:
+          'Comestible en petites quantités, mais évitez de consommer de grandes quantités de feuilles crues en raison de traces de glycosides.',
+    ),
+    'hedera helix': const AiContent(
+      introduction:
+          'Le Lierre grimpant est une liane persistante essentielle à la biodiversité forestière, offrant fleurs tardives et baies hivernales.',
+      description:
+          'Une vigoureuse liane ligneuse qui s\'accroche aux supports grâce à de petits crampons aériens non parasites. Il présente deux types de feuilles distincts : lobées sur les rameaux grimpants et ovales entières sur les rameaux fertiles.',
+      funFacts: [
+        'Le lierre ne suce pas la sève des arbres : il s\'en sert uniquement de tuteur pour capter la lumière du ciel.',
+        'Ses fleurs automnales constituent l\'ultime festin de nectar pour les papillons et abeilles avant l\'hiver.',
+        'Un pied de lierre bien établi peut vivre plus de 400 ans et grimper jusqu\'à 30 mètres de hauteur.',
+      ],
+      observationTips: [
+        'Comparez la forme des feuilles palmées du bas avec les feuilles ovales non lobées situées au sommet ensoleillé.',
+        'À la fin de l\'hiver, repérez les baies noires qui sauvent de nombreux oiseaux du gel.',
+      ],
+      safetyNote:
+          'Toutes les parties du lierre (notamment les baies noires) sont toxiques en cas d\'ingestion pour l\'humain et les animaux de compagnie.',
+    ),
+  };
+
   @override
   Future<AiContent> generateContent(
     String scientificName,
@@ -320,11 +426,38 @@ class DemoAiContentService implements AiContentService {
     await Future.delayed(const Duration(milliseconds: 900));
 
     final key = scientificName.trim().toLowerCase();
+    final isFrench = language.startsWith('fr');
+
+    if (isFrench) {
+      if (_curatedKnowledgeFr.containsKey(key)) {
+        return _curatedKnowledgeFr[key]!;
+      }
+
+      // French dynamic fallback
+      return AiContent(
+        introduction:
+            '$commonName ($scientificName) est une plante captivante de la famille des $family, réputée pour ses remarquables adaptations écologiques.',
+        description:
+            '$scientificName présente les traits caractéristiques de la famille botanique des $family. Elle prospère dans les milieux tempérés où son feuillage capte la lumière pour nourrir l\'écosystème local.',
+        funFacts: [
+          'Les espèces de la famille des $family ont développé des stratégies de survie uniques au fil de millions d\'années d\'évolution.',
+          '$commonName joue un rôle essentiel dans son habitat en favorisant la pollinisation et la vitalité du sol.',
+          'Les botanistes analysent la morphologie florale des $family pour répertorier de nouvelles sous-espèces.',
+        ],
+        observationTips: [
+          'Observez l\'agencement des feuilles (alternes ou opposées) le long de la tige principale.',
+          'Examinez la structure des pétales et la couleur du pollen pour affiner votre identification de terrain.',
+        ],
+        safetyNote:
+            'Lavez-vous toujours les mains après manipulation et ne consommez jamais de végétaux sauvages sans confirmation experte.',
+      );
+    }
+
     if (_curatedKnowledge.containsKey(key)) {
       return _curatedKnowledge[key]!;
     }
 
-    // Dynamic fallback for species not in the curated set
+    // Dynamic English fallback
     return AiContent(
       introduction:
           '$commonName ($scientificName) is a fascinating member of the $family botanical family, '
