@@ -326,18 +326,26 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
                   // 2. Tab selector (Sign In vs Create Account)
                   Container(
-                    height: 46,
+                    height: 54,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(23),
+                      borderRadius: BorderRadius.circular(27),
                       border: Border.all(color: AppColors.border),
                     ),
                     padding: const EdgeInsets.all(4),
                     child: TabBar(
                       controller: _tabController,
+                      indicatorSize: TabBarIndicatorSize.tab,
                       indicator: BoxDecoration(
                         color: AppColors.sageGreen,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(23),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.sageGreen.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       labelColor: Colors.white,
                       unselectedLabelColor: AppColors.secondaryText,
@@ -347,8 +355,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                       ),
                       dividerColor: Colors.transparent,
                       tabs: const [
-                        Tab(key: Key('auth_tab_sign_in'), text: 'Sign In'),
-                        Tab(key: Key('auth_tab_sign_up'), text: 'Create Account'),
+                        Tab(
+                          key: Key('auth_tab_sign_in'),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                            child: Text('Sign In', maxLines: 1),
+                          ),
+                        ),
+                        Tab(
+                          key: Key('auth_tab_sign_up'),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                            child: Text('Create Account', maxLines: 1),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -509,6 +529,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             text: 'Sign In',
             isLoading: authState.isLoading,
             isFullWidth: true,
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+            borderRadius: 26,
             onPressed: authState.isLoading ? null : _handleSignIn,
           ),
         ],
@@ -614,6 +637,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             text: 'Create Account',
             isLoading: authState.isLoading,
             isFullWidth: true,
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+            borderRadius: 26,
             onPressed: authState.isLoading ? null : _handleSignUp,
           ),
         ],
