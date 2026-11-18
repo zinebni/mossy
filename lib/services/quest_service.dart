@@ -357,6 +357,28 @@ class _LocalQuestStore {
       await prefs.setString('${_dailyResetKey}_$userId', dateStr);
     } catch (_) {}
   }
+
+  /// Clears all quest progress data for a specific user.
+  static Future<void> clearUser(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('${_progressKey}_$userId');
+      await prefs.remove('${_dailyResetKey}_$userId');
+    } catch (_) {}
+  }
+
+  /// Clears all quest progress data across all users on device.
+  static Future<void> clearAll() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys();
+      for (final key in keys) {
+        if (key.startsWith(_progressKey) || key.startsWith(_dailyResetKey)) {
+          await prefs.remove(key);
+        }
+      }
+    } catch (_) {}
+  }
 }
 
 // ============================================================================
@@ -371,11 +393,23 @@ abstract class QuestService {
   /// progress, and returns any newly-completed [QuestDefinition]s (for XP award).
   Future<List<QuestDefinition>> onDiscoverySaved(
       String userId, Discovery discovery);
+
+  /// Clears quest progress for a specific user.
+  Future<void> clearUser(String userId);
+
+  /// Clears all quest progress across all users.
+  Future<void> clearAll();
 }
 
 /// Local-first implementation — all persistence via SharedPreferences.
 /// Zero pre-seeded user progress; fresh accounts start with clean state.
 class LocalQuestService implements QuestService {
+  @override
+  Future<void> clearUser(String userId) => _LocalQuestStore.clearUser(userId);
+
+  @override
+  Future<void> clearAll() => _LocalQuestStore.clearAll();
+
   @override
   Future<List<QuestWithProgress>> getActiveQuestsWithProgress(
       String userId) async {

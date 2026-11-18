@@ -109,126 +109,54 @@ class DemoMissionService implements MissionService {
     ),
   ];
 
-  late final List<UserMission> _userMissions;
+  final Map<String, List<UserMission>> _userMissionsMap = {};
 
-  DemoMissionService() {
-    _initUserMissions();
+  void clear() {
+    _userMissionsMap.clear();
   }
 
-  void _initUserMissions() {
-    _userMissions = [
-      UserMission(
-        id: 'um-001',
-        userId: 'demo-user',
-        missionId: 'mission-001',
-        mission: _sampleMissions[0],
-        status: UserMissionStatus.completed,
-        completedAt: DateTime.now().subtract(const Duration(days: 2)),
-        verificationResult: {
-          'verified': true,
-          'matched_species': 'Taraxacum officinale',
-        },
-      ),
-      UserMission(
-        id: 'um-002',
-        userId: 'demo-user',
-        missionId: 'mission-002',
-        mission: _sampleMissions[1],
-        status: UserMissionStatus.inProgress,
-      ),
-      UserMission(
-        id: 'um-003',
-        userId: 'demo-user',
-        missionId: 'mission-003',
-        mission: _sampleMissions[2],
-        status: UserMissionStatus.completed,
-        completedAt: DateTime.now().subtract(const Duration(days: 7)),
-        verificationResult: {
-          'verified': true,
-          'matched_species': 'Hedera helix',
-        },
-      ),
-      UserMission(
-        id: 'um-004',
-        userId: 'demo-user',
-        missionId: 'mission-004',
-        mission: _sampleMissions[3],
-        status: UserMissionStatus.inProgress,
-      ),
-      UserMission(
-        id: 'um-005',
-        userId: 'demo-user',
-        missionId: 'mission-005',
-        mission: _sampleMissions[4],
+  void clearUser(String userId) {
+    _userMissionsMap.remove(userId);
+  }
+
+  List<UserMission> _getUserMissions(String userId) {
+    return _userMissionsMap.putIfAbsent(userId, () {
+      return _sampleMissions.map((m) => UserMission(
+        id: 'um-${m.id}-$userId',
+        userId: userId,
+        missionId: m.id,
+        mission: m,
         status: UserMissionStatus.available,
-      ),
-      UserMission(
-        id: 'um-006',
-        userId: 'demo-user',
-        missionId: 'mission-006',
-        mission: _sampleMissions[5],
-        status: UserMissionStatus.completed,
-        completedAt: DateTime.now().subtract(const Duration(days: 5)),
-        verificationResult: {
-          'verified': true,
-          'matched_species': 'Lavandula angustifolia',
-        },
-      ),
-      UserMission(
-        id: 'um-007',
-        userId: 'demo-user',
-        missionId: 'mission-007',
-        mission: _sampleMissions[6],
-        status: UserMissionStatus.available,
-      ),
-      UserMission(
-        id: 'um-008',
-        userId: 'demo-user',
-        missionId: 'mission-008',
-        mission: _sampleMissions[7],
-        status: UserMissionStatus.available,
-      ),
-      UserMission(
-        id: 'um-009',
-        userId: 'demo-user',
-        missionId: 'mission-009',
-        mission: _sampleMissions[8],
-        status: UserMissionStatus.available,
-      ),
-      UserMission(
-        id: 'um-010',
-        userId: 'demo-user',
-        missionId: 'mission-010',
-        mission: _sampleMissions[9],
-        status: UserMissionStatus.available,
-      ),
-    ];
+      )).toList();
+    });
   }
 
   @override
   Future<List<Mission>> getAvailableMissions() async {
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 30));
     return List.unmodifiable(_sampleMissions);
   }
 
   @override
   Future<List<UserMission>> getUserMissions(String userId) async {
-    await Future.delayed(const Duration(milliseconds: 150));
-    return List.from(_userMissions);
+    if (userId.isEmpty || userId == 'guest-user') return [];
+    await Future.delayed(const Duration(milliseconds: 40));
+    return List.from(_getUserMissions(userId));
   }
 
   @override
   Future<UserMission> startMission(String userId, String missionId) async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    final index = _userMissions.indexWhere((um) => um.missionId == missionId);
+    await Future.delayed(const Duration(milliseconds: 40));
+    final list = _getUserMissions(userId);
+    final index = list.indexWhere((um) => um.missionId == missionId);
     final mission = _sampleMissions.firstWhere((m) => m.id == missionId);
 
     if (index >= 0) {
-      final updated = _userMissions[index].copyWith(
+      final updated = list[index].copyWith(
         status: UserMissionStatus.inProgress,
         mission: mission,
       );
-      _userMissions[index] = updated;
+      list[index] = updated;
       return updated;
     } else {
       final newUm = UserMission(
@@ -238,7 +166,7 @@ class DemoMissionService implements MissionService {
         mission: mission,
         status: UserMissionStatus.inProgress,
       );
-      _userMissions.add(newUm);
+      list.add(newUm);
       return newUm;
     }
   }
@@ -248,17 +176,19 @@ class DemoMissionService implements MissionService {
     String userMissionId,
     UserMissionStatus status,
   ) async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    final index = _userMissions.indexWhere((um) => um.id == userMissionId);
-    if (index < 0) {
-      throw Exception('User mission not found: $userMissionId');
+    await Future.delayed(const Duration(milliseconds: 40));
+    for (final list in _userMissionsMap.values) {
+      final index = list.indexWhere((um) => um.id == userMissionId);
+      if (index >= 0) {
+        final updated = list[index].copyWith(
+          status: status,
+          completedAt: status == UserMissionStatus.completed ? DateTime.now() : null,
+        );
+        list[index] = updated;
+        return updated;
+      }
     }
-    final updated = _userMissions[index].copyWith(
-      status: status,
-      completedAt: status == UserMissionStatus.completed ? DateTime.now() : null,
-    );
-    _userMissions[index] = updated;
-    return updated;
+    throw Exception('User mission not found: $userMissionId');
   }
 
   @override
@@ -266,18 +196,20 @@ class DemoMissionService implements MissionService {
     String userMissionId, {
     Map<String, dynamic>? verificationData,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 120));
-    final index = _userMissions.indexWhere((um) => um.id == userMissionId);
-    if (index < 0) {
-      throw Exception('User mission not found: $userMissionId');
+    await Future.delayed(const Duration(milliseconds: 40));
+    for (final list in _userMissionsMap.values) {
+      final index = list.indexWhere((um) => um.id == userMissionId);
+      if (index >= 0) {
+        final updated = list[index].copyWith(
+          status: UserMissionStatus.completed,
+          completedAt: DateTime.now(),
+          verificationResult: verificationData ?? {'verified': true},
+        );
+        list[index] = updated;
+        return updated;
+      }
     }
-    final updated = _userMissions[index].copyWith(
-      status: UserMissionStatus.completed,
-      completedAt: DateTime.now(),
-      verificationResult: verificationData ?? {'verified': true},
-    );
-    _userMissions[index] = updated;
-    return updated;
+    throw Exception('User mission not found: $userMissionId');
   }
 
   @override
@@ -340,6 +272,10 @@ class SupabaseMissionService implements MissionService {
   final DemoMissionService _demoFallback = DemoMissionService();
 
   SupabaseMissionService(this._supabaseService);
+
+  void clear() {
+    _demoFallback.clear();
+  }
 
   @override
   Future<List<Mission>> getAvailableMissions() async {

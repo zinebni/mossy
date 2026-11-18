@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../services/supabase_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/mascot/mascot_expression.dart';
 import '../../../../shared/widgets/mascot/mossy_mascot.dart';
@@ -52,14 +54,30 @@ class _SplashScreenState extends State<SplashScreen>
     final prefs = await SharedPreferences.getInstance();
     final bool hasCompletedOnboarding =
         prefs.getBool('onboarding_completed') ?? false;
-    final bool hasSession = prefs.containsKey('mossy_active_session_profile');
     final bool isLoggedOut = prefs.getBool('mossy_explicitly_logged_out') ?? false;
+
+    bool hasSession = false;
+    final supabase = SupabaseService.instance;
+    if (!supabase.isDemoMode && supabase.isInitialized) {
+      hasSession = supabase.auth?.currentUser != null;
+    } else if (!isLoggedOut) {
+      final sessionStr = prefs.getString('mossy_active_session_profile');
+      if (sessionStr != null && sessionStr.isNotEmpty) {
+        try {
+          final data = jsonDecode(sessionStr);
+          final id = data['id'];
+          if (id != null && id != 'guest-user' && id != 'demo-user') {
+            hasSession = true;
+          }
+        } catch (_) {}
+      }
+    }
 
     if (!mounted) return;
 
     if (!hasCompletedOnboarding) {
       context.go('/onboarding');
-    } else if (hasSession && !isLoggedOut) {
+    } else if (hasSession) {
       context.go('/home');
     } else {
       context.go('/auth');

@@ -135,10 +135,18 @@ class DiscoveriesNotifier extends StateNotifier<AsyncValue<List<Discovery>>> {
 
   DiscoveriesNotifier(this._service, this._userId, this._ref)
       : super(const AsyncValue.loading()) {
-    loadDiscoveries();
+    if (_userId.isEmpty) {
+      state = const AsyncValue.data([]);
+    } else {
+      loadDiscoveries();
+    }
   }
 
   Future<void> loadDiscoveries() async {
+    if (_userId.isEmpty) {
+      state = const AsyncValue.data([]);
+      return;
+    }
     try {
       final discoveries = await _service.getDiscoveries(userId: _userId);
       state = AsyncValue.data(discoveries);
@@ -207,7 +215,7 @@ final discoveriesProvider =
     StateNotifierProvider<DiscoveriesNotifier, AsyncValue<List<Discovery>>>((ref) {
   final service = ref.watch(discoveryServiceProvider);
   final auth = ref.watch(authProvider);
-  final userId = auth.user?.id ?? 'guest-user';
+  final userId = auth.user?.id ?? '';
   return DiscoveriesNotifier(service, userId, ref);
 });
 
@@ -218,10 +226,18 @@ class MissionsNotifier extends StateNotifier<AsyncValue<List<UserMission>>> {
 
   MissionsNotifier(this._service, this._userId)
       : super(const AsyncValue.loading()) {
-    loadMissions();
+    if (_userId.isEmpty) {
+      state = const AsyncValue.data([]);
+    } else {
+      loadMissions();
+    }
   }
 
   Future<void> loadMissions() async {
+    if (_userId.isEmpty) {
+      state = const AsyncValue.data([]);
+      return;
+    }
     try {
       final missions = await _service.getUserMissions(_userId);
       state = AsyncValue.data(missions);
@@ -283,7 +299,7 @@ final missionsProvider =
     StateNotifierProvider<MissionsNotifier, AsyncValue<List<UserMission>>>((ref) {
   final service = ref.watch(missionServiceProvider);
   final auth = ref.watch(authProvider);
-  final userId = auth.user?.id ?? 'guest-user';
+  final userId = auth.user?.id ?? '';
   return MissionsNotifier(service, userId);
 });
 
@@ -294,10 +310,18 @@ class AchievementsNotifier extends StateNotifier<AsyncValue<List<Achievement>>> 
 
   AchievementsNotifier(this._service, this._userId)
       : super(const AsyncValue.loading()) {
-    loadAchievements();
+    if (_userId.isEmpty) {
+      state = const AsyncValue.data([]);
+    } else {
+      loadAchievements();
+    }
   }
 
   Future<void> loadAchievements() async {
+    if (_userId.isEmpty) {
+      state = const AsyncValue.data([]);
+      return;
+    }
     try {
       final list = await _service.getAchievements(_userId);
       state = AsyncValue.data(list);
@@ -341,7 +365,7 @@ final achievementsProvider =
     StateNotifierProvider<AchievementsNotifier, AsyncValue<List<Achievement>>>((ref) {
   final service = ref.watch(achievementServiceProvider);
   final auth = ref.watch(authProvider);
-  final userId = auth.user?.id ?? 'guest-user';
+  final userId = auth.user?.id ?? '';
   return AchievementsNotifier(service, userId);
 });
 
@@ -352,10 +376,28 @@ class GardenStateNotifier extends StateNotifier<AsyncValue<GardenState>> {
 
   GardenStateNotifier(this._service, this._userId)
       : super(const AsyncValue.loading()) {
-    loadGardenState();
+    if (_userId.isEmpty) {
+      state = AsyncValue.data(GardenState(
+        userId: '',
+        gardenLevel: 1,
+        unlockedItems: const ['tiny_sprout'],
+        updatedAt: DateTime.now(),
+      ));
+    } else {
+      loadGardenState();
+    }
   }
 
   Future<void> loadGardenState() async {
+    if (_userId.isEmpty) {
+      state = AsyncValue.data(GardenState(
+        userId: '',
+        gardenLevel: 1,
+        unlockedItems: const ['tiny_sprout'],
+        updatedAt: DateTime.now(),
+      ));
+      return;
+    }
     try {
       final garden = await _service.getGardenState(_userId);
       state = AsyncValue.data(garden);
@@ -388,7 +430,7 @@ final gardenStateProvider =
     StateNotifierProvider<GardenStateNotifier, AsyncValue<GardenState>>((ref) {
   final service = ref.watch(gardenServiceProvider);
   final auth = ref.watch(authProvider);
-  final userId = auth.user?.id ?? 'guest-user';
+  final userId = auth.user?.id ?? '';
   return GardenStateNotifier(service, userId);
 });
 
@@ -404,7 +446,11 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
 
   Future<void> loadProfile() async {
     final authState = _ref.read(authProvider);
-    final user = authState.user ?? AuthNotifier.defaultProfile;
+    final user = authState.user;
+    if (user == null) {
+      state = const AsyncValue.loading();
+      return;
+    }
     try {
       final total = await _pointsService.getTotalPoints(user.id);
       final updated = user.copyWith(
@@ -418,7 +464,8 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
   }
 
   Future<void> addPoints(int points, String reason, {String? referenceId}) async {
-    final current = state.value ?? AuthNotifier.defaultProfile;
+    final current = state.value;
+    if (current == null) return;
     try {
       await _pointsService.awardPoints(
         current.id,
@@ -654,7 +701,7 @@ final questsProvider = StateNotifierProvider<QuestNotifier,
     AsyncValue<List<QuestWithProgress>>>((ref) {
   final service = ref.watch(questServiceProvider);
   final auth = ref.watch(authProvider);
-  final userId = auth.user?.id ?? 'guest-user';
+  final userId = auth.user?.id ?? '';
   return QuestNotifier(service, userId, ref);
 });
 

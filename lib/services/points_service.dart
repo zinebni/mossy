@@ -14,91 +14,31 @@ abstract class PointsService {
   });
 }
 
-/// Demo implementation of [PointsService] with realistic historical transactions.
+/// Demo implementation of [PointsService] with clean, per-user isolated points history.
 class DemoPointsService implements PointsService {
-  static final List<PointsEntry> _initialHistory = [
-    PointsEntry(
-      id: 'pe-001',
-      userId: 'demo-user',
-      points: 50,
-      reason: 'First Botanical Discovery bonus: Bellis perennis',
-      referenceId: 'disc-001',
-      createdAt: DateTime.now().subtract(const Duration(days: 10)),
-    ),
-    PointsEntry(
-      id: 'pe-002',
-      userId: 'demo-user',
-      points: 50,
-      reason: 'Achievement Unlocked: First Discovery',
-      referenceId: 'ach-first-discovery',
-      createdAt: DateTime.now().subtract(const Duration(days: 10)),
-    ),
-    PointsEntry(
-      id: 'pe-003',
-      userId: 'demo-user',
-      points: 50,
-      reason: 'Discovered Common Ivy in the woodland',
-      referenceId: 'disc-005',
-      createdAt: DateTime.now().subtract(const Duration(days: 8)),
-    ),
-    PointsEntry(
-      id: 'pe-004',
-      userId: 'demo-user',
-      points: 50,
-      reason: 'Mission Complete: The Ivy Wall Detective',
-      referenceId: 'mission-003',
-      createdAt: DateTime.now().subtract(const Duration(days: 7)),
-    ),
-    PointsEntry(
-      id: 'pe-005',
-      userId: 'demo-user',
-      points: 50,
-      reason: 'Discovered English Lavender',
-      referenceId: 'disc-004',
-      createdAt: DateTime.now().subtract(const Duration(days: 6)),
-    ),
-    PointsEntry(
-      id: 'pe-006',
-      userId: 'demo-user',
-      points: 90,
-      reason: 'Mission Complete: Aromatic Herb Quest',
-      referenceId: 'mission-006',
-      createdAt: DateTime.now().subtract(const Duration(days: 5)),
-    ),
-    PointsEntry(
-      id: 'pe-007',
-      userId: 'demo-user',
-      points: 50,
-      reason: 'Discovered Wild Dog Rose',
-      referenceId: 'disc-003',
-      createdAt: DateTime.now().subtract(const Duration(days: 4)),
-    ),
-    PointsEntry(
-      id: 'pe-008',
-      userId: 'demo-user',
-      points: 60,
-      reason: 'Mission Complete: Find a Golden Yellow Flower',
-      referenceId: 'mission-001',
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-  ];
+  final Map<String, List<PointsEntry>> _userHistory = {};
 
-  final List<PointsEntry> _history = List.from(_initialHistory);
+  void clear() {
+    _userHistory.clear();
+  }
+
+  void clearUser(String userId) {
+    _userHistory.remove(userId);
+  }
 
   @override
   Future<int> getTotalPoints(String userId) async {
-    await Future.delayed(const Duration(milliseconds: 60));
-    return _history
-        .where((e) => e.userId == userId || e.userId == 'demo-user')
-        .fold<int>(0, (sum, item) => sum + item.points);
+    if (userId.isEmpty || userId == 'guest-user') return 0;
+    await Future.delayed(const Duration(milliseconds: 30));
+    final list = _userHistory[userId] ?? const [];
+    return list.fold<int>(0, (sum, item) => sum + item.points);
   }
 
   @override
   Future<List<PointsEntry>> getPointsHistory(String userId) async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    final list = _history
-        .where((e) => e.userId == userId || e.userId == 'demo-user')
-        .toList();
+    if (userId.isEmpty || userId == 'guest-user') return [];
+    await Future.delayed(const Duration(milliseconds: 40));
+    final list = List<PointsEntry>.from(_userHistory[userId] ?? const []);
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list;
   }
@@ -110,7 +50,7 @@ class DemoPointsService implements PointsService {
     String reason, {
     String? referenceId,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 40));
     final entry = PointsEntry(
       id: 'pe-${DateTime.now().millisecondsSinceEpoch}',
       userId: userId,
@@ -119,7 +59,8 @@ class DemoPointsService implements PointsService {
       referenceId: referenceId,
       createdAt: DateTime.now(),
     );
-    _history.insert(0, entry);
+    final list = _userHistory.putIfAbsent(userId, () => <PointsEntry>[]);
+    list.insert(0, entry);
     return entry;
   }
 }
@@ -130,6 +71,10 @@ class SupabasePointsService implements PointsService {
   final DemoPointsService _demoFallback = DemoPointsService();
 
   SupabasePointsService(this._supabaseService);
+
+  void clear() {
+    _demoFallback.clear();
+  }
 
   @override
   Future<int> getTotalPoints(String userId) async {

@@ -49,7 +49,7 @@ void main() {
       const userId = 'test-gardener';
 
       final initial = await service.getGardenState(userId);
-      expect(initial.gardenLevel, 3);
+      expect(initial.gardenLevel, 1);
 
       final upgraded = await service.updateGardenLevel(userId, 4);
       expect(upgraded.gardenLevel, 4);

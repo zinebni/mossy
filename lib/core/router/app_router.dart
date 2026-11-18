@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/supabase_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../features/adventures/presentation/adventures_screen.dart';
 import '../../features/auth/presentation/auth_screen.dart';
@@ -30,6 +33,47 @@ class AppRouter {
 
   static final GoRouter router = GoRouter(
     initialLocation: splashPath,
+    redirect: (context, state) async {
+      final path = state.uri.path;
+      final isAuthPath = path == authPath;
+      final isOnboardingPath = path == onboardingPath;
+      final isSplashPath = path == splashPath;
+
+      final supabaseService = SupabaseService.instance;
+      bool hasActiveSession = false;
+
+      if (!supabaseService.isDemoMode && supabaseService.isInitialized) {
+        hasActiveSession = supabaseService.auth?.currentUser != null;
+      } else {
+        final prefs = await SharedPreferences.getInstance();
+        final isLoggedOut = prefs.getBool('mossy_explicitly_logged_out') ?? false;
+        final sessionJson = prefs.getString('mossy_active_session_profile');
+        if (!isLoggedOut && sessionJson != null && sessionJson.isNotEmpty) {
+          try {
+            final data = jsonDecode(sessionJson) as Map<String, dynamic>;
+            final id = data['id'] as String?;
+            hasActiveSession = id != null && id.isNotEmpty && id != 'guest-user' && id != 'demo-user';
+          } catch (_) {
+            hasActiveSession = false;
+          }
+        }
+      }
+
+      // If user is unauthenticated and attempting to access protected screens
+      if (!hasActiveSession) {
+        if (!isAuthPath && !isOnboardingPath && !isSplashPath) {
+          return authPath;
+        }
+        return null;
+      }
+
+      // If user is authenticated and navigating to auth
+      if (hasActiveSession && isAuthPath) {
+        return homePath;
+      }
+
+      return null;
+    },
     routes: [
       GoRoute(path: splashPath, builder: (_, __) => const SplashScreen()),
       GoRoute(path: onboardingPath, builder: (_, __) => const OnboardingScreen()),

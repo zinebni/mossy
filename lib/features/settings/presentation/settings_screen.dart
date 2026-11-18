@@ -100,21 +100,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _sectionLabel(isFr ? 'Compte' : 'Account'),
           MossyCard(
             child: Column(children: [
-              if (!authState.isAuthenticated || authState.isGuest)
-                _ListTile(
-                  icon: Icons.login_rounded,
-                  title: isFr ? 'Connexion / Inscription' : 'Sign In / Register',
-                  subtitle: isFr ? 'Synchronisez vos découvertes sur le cloud' : 'Sync discoveries across devices',
-                  titleColor: AppColors.sageGreen,
-                  onTap: () => context.push('/auth'),
-                )
-              else
-                _ListTile(
-                  icon: Icons.account_circle_outlined,
-                  title: isFr ? 'Changer de compte' : 'Switch Account',
-                  subtitle: isFr ? 'Connecté en tant que ${profile?.username ?? 'Explorer'}' : 'Currently signed in as ${profile?.username ?? 'Explorer'}',
-                  onTap: () => context.push('/auth'),
-                ),
+              _ListTile(
+                icon: Icons.account_circle_outlined,
+                title: isFr ? 'Changer de compte' : 'Switch Account',
+                subtitle: isFr ? 'Connecté en tant que ${profile?.username ?? 'Explorer'}' : 'Currently signed in as ${profile?.username ?? 'Explorer'}',
+                onTap: () => context.push('/auth'),
+              ),
               _Divider(),
               _ListTile(
                 icon: Icons.logout_rounded,
@@ -122,15 +113,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 titleColor: AppColors.error,
                 onTap: () => _confirmSignOut(context, ref),
               ),
-              if (authState.isAuthenticated && !authState.isGuest) ...[
-                _Divider(),
-                _ListTile(
-                  icon: Icons.delete_forever_rounded,
-                  title: l10n?.deleteAccount ?? 'Delete Account',
-                  titleColor: AppColors.error,
-                  onTap: () => _confirmDelete(context),
-                ),
-              ],
+              _Divider(),
+              _ListTile(
+                icon: Icons.delete_forever_rounded,
+                title: l10n?.deleteAccount ?? 'Delete Account',
+                titleColor: AppColors.error,
+                onTap: () => _confirmDelete(context),
+              ),
             ]),
           ),
           const SizedBox(height: 20),

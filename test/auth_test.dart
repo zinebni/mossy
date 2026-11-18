@@ -15,7 +15,9 @@ import 'package:mossy/features/garden/presentation/garden_screen.dart';
 import 'package:mossy/features/home/presentation/home_screen.dart';
 import 'package:mossy/features/profile/presentation/profile_screen.dart';
 import 'package:mossy/features/settings/presentation/settings_screen.dart';
+import 'package:mossy/services/discovery_service.dart';
 import 'package:mossy/services/supabase_service.dart';
+import 'package:mossy/shared/models/discovery.dart';
 import 'package:mossy/shared/providers/app_providers.dart';
 import 'package:mossy/shared/providers/auth_provider.dart';
 
@@ -258,11 +260,68 @@ void main() {
       expect(notifier.state.successMessage, contains('flora@mossy.test'));
     });
 
-    test('Guest mode enters as Guest Explorer', () async {
+    test('Sign out purges session profile and clears active user', () async {
       final notifier = AuthNotifier(SupabaseService.instance);
-      await notifier.continueAsGuest();
-      expect(notifier.state.isGuest, isTrue);
-      expect(notifier.state.user?.username, equals('Guest Explorer'));
+      await notifier.signUpWithEmail('purge_me@mossy.test', 'Secret123', username: 'PurgeTarget');
+      expect(notifier.state.isAuthenticated, isTrue);
+
+      await notifier.signOut();
+      expect(notifier.state.isAuthenticated, isFalse);
+      expect(notifier.state.user, isNull);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('mossy_active_session_profile'), isNull);
+      expect(prefs.getBool('mossy_explicitly_logged_out'), isTrue);
+    });
+
+    test('Strict user isolation: User A data is isolated and does not leak to User B', () async {
+      final userAId = 'user_aaa_123';
+      final userBId = 'user_bbb_456';
+
+      final now = DateTime.now();
+      final discA = Discovery(
+        id: 'disc-user-a',
+        userId: userAId,
+        commonName: 'Bellis perennis',
+        scientificName: 'Bellis perennis',
+        family: 'Asteraceae',
+        imagePath: 'local://a.jpg',
+        discoveredAt: now,
+        createdAt: now,
+        identificationScore: 0.95,
+      );
+
+      // Save discovery for user A
+      await LocalDiscoveryStore.saveForUser(userAId, [discA]);
+
+      // Verify User A has 1 discovery
+      final userAList = await LocalDiscoveryStore.loadForUser(userAId);
+      expect(userAList.length, equals(1));
+      expect(userAList.first.id, equals('disc-user-a'));
+
+      // Verify User B has ZERO discoveries (strict user isolation)
+      final userBList = await LocalDiscoveryStore.loadForUser(userBId);
+      expect(userBList, isEmpty);
+
+      // Clear User A and ensure only User A data is purged
+      await LocalDiscoveryStore.clearUser(userAId);
+      final userAListAfter = await LocalDiscoveryStore.loadForUser(userAId);
+      expect(userAListAfter, isEmpty);
+    });
+
+    test('Legacy guest or demo profiles in storage are rejected on boot', () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'mossy_active_session_profile',
+        jsonEncode({'id': 'guest-user', 'username': 'Guest Explorer'}),
+      );
+
+      final notifier = AuthNotifier(SupabaseService.instance);
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      // Guest profile must NOT be restored; state must remain unauthenticated
+      expect(notifier.state.isAuthenticated, isFalse);
+      expect(notifier.state.user, isNull);
     });
   });
 

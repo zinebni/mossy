@@ -15,40 +15,38 @@ abstract class AchievementService {
   Future<Achievement?> unlockAchievement(String userId, String achievementId);
 }
 
-/// Demo implementation with predefined Mossy milestones.
+/// Demo implementation with predefined Mossy milestones and per-user unlock tracking.
 class DemoAchievementService implements AchievementService {
-  static final List<Achievement> _defaultAchievements = [
+  static const List<Achievement> _achievementTemplates = [
     Achievement(
       id: 'ach-first-discovery',
       title: 'First Discovery',
       description: 'Log your very first botanical discovery into the journal.',
       icon: Icons.eco_rounded,
-      isUnlocked: true,
-      unlockedAt: DateTime.now().subtract(const Duration(days: 10)),
+      isUnlocked: false,
     ),
     Achievement(
       id: 'ach-curious-explorer',
       title: 'Curious Explorer',
       description: 'Discover and catalog 5 different plant specimens.',
       icon: Icons.explore_rounded,
-      isUnlocked: true,
-      unlockedAt: DateTime.now().subtract(const Duration(days: 2)),
+      isUnlocked: false,
     ),
-    const Achievement(
+    Achievement(
       id: 'ach-flower-collector',
       title: 'Flower Collector',
       description: 'Collect 10 plant discoveries in your personal nature journal.',
       icon: Icons.local_florist_rounded,
       isUnlocked: false,
     ),
-    const Achievement(
+    Achievement(
       id: 'ach-nature-enthusiast',
       title: 'Nature Enthusiast',
       description: 'Reach a milestone of 25 outdoor plant discoveries.',
       icon: Icons.park_rounded,
       isUnlocked: false,
     ),
-    const Achievement(
+    Achievement(
       id: 'ach-adventure-seeker',
       title: 'Adventure Seeker',
       description: 'Complete 5 exploration missions and daily nature quests.',
@@ -60,25 +58,43 @@ class DemoAchievementService implements AchievementService {
       title: 'Garden Keeper',
       description: 'Nurture your virtual sanctuary to reach Garden Level 3.',
       icon: Icons.yard_rounded,
-      isUnlocked: true,
-      unlockedAt: DateTime.now().subtract(const Duration(days: 3)),
+      isUnlocked: false,
     ),
     Achievement(
       id: 'ach-botanist',
       title: 'Botanist',
       description: 'Identify species belonging to 5 different plant families.',
       icon: Icons.menu_book_rounded,
-      isUnlocked: true,
-      unlockedAt: DateTime.now().subtract(const Duration(days: 1)),
+      isUnlocked: false,
     ),
   ];
 
-  final List<Achievement> _achievements = List.from(_defaultAchievements);
+  final Map<String, Set<String>> _userUnlocked = {};
+  final Map<String, Map<String, DateTime>> _userUnlockedAt = {};
+
+  void clear() {
+    _userUnlocked.clear();
+    _userUnlockedAt.clear();
+  }
+
+  void clearUser(String userId) {
+    _userUnlocked.remove(userId);
+    _userUnlockedAt.remove(userId);
+  }
 
   @override
   Future<List<Achievement>> getAchievements(String userId) async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    return List.unmodifiable(_achievements);
+    await Future.delayed(const Duration(milliseconds: 30));
+    final unlocked = _userUnlocked[userId] ?? const <String>{};
+    final times = _userUnlockedAt[userId] ?? const <String, DateTime>{};
+
+    return _achievementTemplates.map((ach) {
+      final isUnl = unlocked.contains(ach.id);
+      return ach.copyWith(
+        isUnlocked: isUnl,
+        unlockedAt: isUnl ? times[ach.id] : null,
+      );
+    }).toList();
   }
 
   @override
@@ -89,11 +105,14 @@ class DemoAchievementService implements AchievementService {
     int? completedMissionsCount,
     int? gardenLevel,
   }) async {
-    final newlyUnlocked = <Achievement>[];
+    if (userId.isEmpty || userId == 'guest-user') return [];
 
-    for (int i = 0; i < _achievements.length; i++) {
-      final ach = _achievements[i];
-      if (ach.isUnlocked) continue;
+    final newlyUnlocked = <Achievement>[];
+    final unlocked = _userUnlocked.putIfAbsent(userId, () => <String>{});
+    final times = _userUnlockedAt.putIfAbsent(userId, () => <String, DateTime>{});
+
+    for (final ach in _achievementTemplates) {
+      if (unlocked.contains(ach.id)) continue;
 
       bool shouldUnlock = false;
 
@@ -122,12 +141,10 @@ class DemoAchievementService implements AchievementService {
       }
 
       if (shouldUnlock) {
-        final unlocked = ach.copyWith(
-          isUnlocked: true,
-          unlockedAt: DateTime.now(),
-        );
-        _achievements[i] = unlocked;
-        newlyUnlocked.add(unlocked);
+        final now = DateTime.now();
+        unlocked.add(ach.id);
+        times[ach.id] = now;
+        newlyUnlocked.add(ach.copyWith(isUnlocked: true, unlockedAt: now));
       }
     }
 
@@ -136,16 +153,20 @@ class DemoAchievementService implements AchievementService {
 
   @override
   Future<Achievement?> unlockAchievement(String userId, String achievementId) async {
-    final index = _achievements.indexWhere((a) => a.id == achievementId);
-    if (index >= 0 && !_achievements[index].isUnlocked) {
-      final unlocked = _achievements[index].copyWith(
-        isUnlocked: true,
-        unlockedAt: DateTime.now(),
-      );
-      _achievements[index] = unlocked;
-      return unlocked;
+    if (userId.isEmpty || userId == 'guest-user') return null;
+
+    final unlocked = _userUnlocked.putIfAbsent(userId, () => <String>{});
+    final times = _userUnlockedAt.putIfAbsent(userId, () => <String, DateTime>{});
+
+    try {
+      final ach = _achievementTemplates.firstWhere((a) => a.id == achievementId);
+      final now = DateTime.now();
+      unlocked.add(ach.id);
+      times[ach.id] = now;
+      return ach.copyWith(isUnlocked: true, unlockedAt: now);
+    } catch (_) {
+      return null;
     }
-    return null;
   }
 }
 
@@ -155,6 +176,10 @@ class SupabaseAchievementService implements AchievementService {
   final DemoAchievementService _demoFallback = DemoAchievementService();
 
   SupabaseAchievementService(this._supabaseService);
+
+  void clear() {
+    _demoFallback.clear();
+  }
 
   @override
   Future<List<Achievement>> getAchievements(String userId) async {

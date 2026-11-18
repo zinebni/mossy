@@ -10,20 +10,29 @@ abstract class GardenService {
   Future<GardenState> checkProgression(String userId, int totalPoints);
 }
 
-/// Demo implementation of [GardenService] with rich visual garden progression.
+/// Demo implementation of [GardenService] with per-user isolated garden progression.
 class DemoGardenService implements GardenService {
-  GardenState _state = GardenState(
-    userId: 'demo-user',
-    gardenLevel: 3,
-    unlockedItems: const [
-      'tiny_sprout',
-      'moss_carpet',
-      'stepping_stones',
-      'wildflower_patch',
-      'stone_birdbath',
-    ],
-    updatedAt: DateTime.now().subtract(const Duration(days: 1)),
-  );
+  final Map<String, GardenState> _userGardens = {};
+
+  void clear() {
+    _userGardens.clear();
+  }
+
+  void clearUser(String userId) {
+    _userGardens.remove(userId);
+  }
+
+  GardenState _getOrCreate(String userId) {
+    return _userGardens.putIfAbsent(
+      userId,
+      () => GardenState(
+        userId: userId,
+        gardenLevel: 1,
+        unlockedItems: const ['tiny_sprout'],
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
 
   static const Map<int, List<String>> _levelItemUnlocks = {
     1: ['tiny_sprout'],
@@ -40,45 +49,51 @@ class DemoGardenService implements GardenService {
 
   @override
   Future<GardenState> getGardenState(String userId) async {
-    await Future.delayed(const Duration(milliseconds: 80));
-    return _state;
+    await Future.delayed(const Duration(milliseconds: 40));
+    return _getOrCreate(userId);
   }
 
   @override
   Future<GardenState> updateGardenLevel(String userId, int newLevel) async {
-    await Future.delayed(const Duration(milliseconds: 120));
+    await Future.delayed(const Duration(milliseconds: 60));
+    final current = _getOrCreate(userId);
     final clampedLevel = newLevel.clamp(GardenState.minLevel, GardenState.maxLevel);
 
-    final allUnlocked = <String>{..._state.unlockedItems};
+    final allUnlocked = <String>{...current.unlockedItems};
     for (int lvl = 1; lvl <= clampedLevel; lvl++) {
       if (_levelItemUnlocks.containsKey(lvl)) {
         allUnlocked.addAll(_levelItemUnlocks[lvl]!);
       }
     }
 
-    _state = _state.copyWith(
+    final updated = current.copyWith(
       gardenLevel: clampedLevel,
       unlockedItems: allUnlocked.toList(),
       updatedAt: DateTime.now(),
     );
-    return _state;
+    _userGardens[userId] = updated;
+    return updated;
   }
 
   @override
   Future<GardenState> unlockGardenItem(String userId, String itemId) async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    if (!_state.unlockedItems.contains(itemId)) {
-      final updatedList = List<String>.from(_state.unlockedItems)..add(itemId);
-      _state = _state.copyWith(
+    await Future.delayed(const Duration(milliseconds: 40));
+    final current = _getOrCreate(userId);
+    if (!current.unlockedItems.contains(itemId)) {
+      final updatedList = List<String>.from(current.unlockedItems)..add(itemId);
+      final updated = current.copyWith(
         unlockedItems: updatedList,
         updatedAt: DateTime.now(),
       );
+      _userGardens[userId] = updated;
+      return updated;
     }
-    return _state;
+    return current;
   }
 
   @override
   Future<GardenState> checkProgression(String userId, int totalPoints) async {
+    final current = _getOrCreate(userId);
     int targetLevel = 1;
     for (int lvl = 10; lvl >= 1; lvl--) {
       if (totalPoints >= GardenState.pointsForLevel(lvl)) {
@@ -87,10 +102,10 @@ class DemoGardenService implements GardenService {
       }
     }
 
-    if (targetLevel > _state.gardenLevel) {
+    if (targetLevel > current.gardenLevel) {
       return updateGardenLevel(userId, targetLevel);
     }
-    return _state;
+    return current;
   }
 }
 
@@ -100,6 +115,10 @@ class SupabaseGardenService implements GardenService {
   final DemoGardenService _demoFallback = DemoGardenService();
 
   SupabaseGardenService(this._supabaseService);
+
+  void clear() {
+    _demoFallback.clear();
+  }
 
   @override
   Future<GardenState> getGardenState(String userId) async {

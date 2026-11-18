@@ -17,27 +17,32 @@ abstract class DiscoveryService {
 }
 
 /// Persistent local storage helper for the Nature Discovery Journal.
-/// Keeps all user finds saved across app launches even when offline or in guest mode.
+/// Keeps all user finds saved across app launches even when offline.
+/// Strictly scoped per user ID so multi-account data never leaks.
 class LocalDiscoveryStore {
-  static const String _storageKey = 'mossy_user_discoveries_journal';
+  static const String _legacyKey = 'mossy_user_discoveries_journal';
+  static String _userStorageKey(String userId) => 'mossy_user_discoveries_journal_$userId';
 
-  static Future<List<Discovery>> loadAll() async {
+  /// Load discoveries strictly for [userId].
+  static Future<List<Discovery>> loadForUser(String userId) async {
+    if (userId.isEmpty) return <Discovery>[];
     try {
       final prefs = await SharedPreferences.getInstance();
-      final jsonStr = prefs.getString(_storageKey);
+      final jsonStr = prefs.getString(_userStorageKey(userId));
       if (jsonStr != null && jsonStr.isNotEmpty) {
         final List<dynamic> decoded = jsonDecode(jsonStr);
         final list = decoded
             .map((e) => Discovery.fromJson(e as Map<String, dynamic>))
             .where((d) =>
+                d.userId == userId &&
                 d.userId != 'starter-guide' &&
                 d.userId != 'demo-user' &&
+                d.userId != 'guest-user' &&
                 !d.id.startsWith('d1000000-'))
             .toList();
 
-        // If legacy fake/seed discoveries were filtered out, purge them from persistent storage
         if (list.length != decoded.length) {
-          await saveAll(list);
+          await saveForUser(userId, list);
         }
         return list;
       }
@@ -48,36 +53,89 @@ class LocalDiscoveryStore {
     }
   }
 
-  static Future<void> saveAll(List<Discovery> list) async {
+  /// Save discoveries strictly for [userId].
+  static Future<void> saveForUser(String userId, List<Discovery> list) async {
+    if (userId.isEmpty) return;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final jsonStr = jsonEncode(list.map((d) => d.toJson()).toList());
-      await prefs.setString(_storageKey, jsonStr);
+      // Only keep records belonging to this user
+      final userScoped = list.where((d) => d.userId == userId).toList();
+      final jsonStr = jsonEncode(userScoped.map((d) => d.toJson()).toList());
+      await prefs.setString(_userStorageKey(userId), jsonStr);
     } catch (e) {
-      debugPrint('[Mossy] LocalDiscoveryStore saveAll error: $e');
+      debugPrint('[Mossy] LocalDiscoveryStore saveForUser error: $e');
+    }
+  }
+
+  /// Purges discoveries for a specific user.
+  static Future<void> clearUser(String userId) async {
+    if (userId.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_userStorageKey(userId));
+    } catch (e) {
+      debugPrint('[Mossy] LocalDiscoveryStore clearUser error: $e');
+    }
+  }
+
+  /// Purges all discovery storage keys across the entire app.
+  static Future<void> clearAll() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys();
+      for (final key in keys) {
+        if (key == _legacyKey || key.startsWith('mossy_user_discoveries_journal')) {
+          await prefs.remove(key);
+        }
+      }
+    } catch (e) {
+      debugPrint('[Mossy] LocalDiscoveryStore clearAll error: $e');
+    }
+  }
+
+  /// Legacy load helper for backwards-compatibility; redirects to empty if no user.
+  static Future<List<Discovery>> loadAll([String? userId]) async {
+    if (userId != null && userId.isNotEmpty) {
+      return loadForUser(userId);
+    }
+    return <Discovery>[];
+  }
+
+  /// Legacy save helper for backwards-compatibility.
+  static Future<void> saveAll(List<Discovery> list, [String? userId]) async {
+    if (userId != null && userId.isNotEmpty) {
+      await saveForUser(userId, list);
     }
   }
 }
 
-/// Demo & offline implementation of [DiscoveryService] with persistent local storage.
+/// Demo & offline implementation of [DiscoveryService] with user-scoped persistent local storage.
 class DemoDiscoveryService implements DiscoveryService {
-  List<Discovery>? _cache;
+  final Map<String, List<Discovery>> _userCaches = {};
 
-  Future<List<Discovery>> _ensureLoaded() async {
-    _cache ??= await LocalDiscoveryStore.loadAll();
-    return _cache!;
+  void clearCache() {
+    _userCaches.clear();
+  }
+
+  Future<List<Discovery>> _ensureLoaded(String userId) async {
+    if (userId.isEmpty) return [];
+    if (!_userCaches.containsKey(userId)) {
+      _userCaches[userId] = await LocalDiscoveryStore.loadForUser(userId);
+    }
+    return _userCaches[userId]!;
   }
 
   @override
   Future<List<Discovery>> getDiscoveries({String? userId, bool? favoritesOnly}) async {
-    final list = await _ensureLoaded();
+    if (userId == null || userId.isEmpty || userId == 'guest-user') {
+      return <Discovery>[];
+    }
+
+    final list = await _ensureLoaded(userId);
     var result = List<Discovery>.from(list);
 
-    if (userId != null && userId.isNotEmpty && userId != 'guest-user') {
-      result = result
-          .where((d) => d.userId == userId)
-          .toList();
-    }
+    result = result.where((d) => d.userId == userId).toList();
+
     if (favoritesOnly == true) {
       result = result.where((d) => d.isFavorite).toList();
     }
@@ -87,17 +145,20 @@ class DemoDiscoveryService implements DiscoveryService {
 
   @override
   Future<Discovery?> getDiscoveryById(String id) async {
-    final list = await _ensureLoaded();
-    try {
-      return list.firstWhere((d) => d.id == id);
-    } catch (_) {
-      return null;
+    for (final list in _userCaches.values) {
+      try {
+        return list.firstWhere((d) => d.id == id);
+      } catch (_) {}
     }
+    return null;
   }
 
   @override
   Future<Discovery> saveDiscovery(Discovery discovery) async {
-    final list = await _ensureLoaded();
+    final userId = discovery.userId;
+    if (userId.isEmpty) return discovery;
+
+    final list = await _ensureLoaded(userId);
     final index = list.indexWhere((d) =>
         d.id == discovery.id ||
         (d.scientificName.toLowerCase() == discovery.scientificName.toLowerCase() &&
@@ -108,7 +169,7 @@ class DemoDiscoveryService implements DiscoveryService {
     } else {
       list.insert(0, discovery);
     }
-    await LocalDiscoveryStore.saveAll(list);
+    await LocalDiscoveryStore.saveForUser(userId, list);
     return discovery;
   }
 
@@ -119,23 +180,30 @@ class DemoDiscoveryService implements DiscoveryService {
 
   @override
   Future<void> deleteDiscovery(String id) async {
-    final list = await _ensureLoaded();
-    list.removeWhere((d) => d.id == id);
-    await LocalDiscoveryStore.saveAll(list);
+    for (final entry in _userCaches.entries) {
+      final list = entry.value;
+      final before = list.length;
+      list.removeWhere((d) => d.id == id);
+      if (list.length != before) {
+        await LocalDiscoveryStore.saveForUser(entry.key, list);
+      }
+    }
   }
 
   @override
   Future<Discovery> toggleFavorite(String id) async {
-    final list = await _ensureLoaded();
-    final index = list.indexWhere((d) => d.id == id);
-    if (index < 0) {
-      throw Exception('Discovery not found: $id');
+    for (final entry in _userCaches.entries) {
+      final list = entry.value;
+      final index = list.indexWhere((d) => d.id == id);
+      if (index >= 0) {
+        final current = list[index];
+        final updated = current.copyWith(isFavorite: !current.isFavorite);
+        list[index] = updated;
+        await LocalDiscoveryStore.saveForUser(entry.key, list);
+        return updated;
+      }
     }
-    final current = list[index];
-    final updated = current.copyWith(isFavorite: !current.isFavorite);
-    list[index] = updated;
-    await LocalDiscoveryStore.saveAll(list);
-    return updated;
+    throw Exception('Discovery not found: $id');
   }
 
   @override
@@ -160,6 +228,10 @@ class SupabaseDiscoveryService implements DiscoveryService {
 
   SupabaseDiscoveryService(this._supabaseService);
 
+  void clearCache() {
+    _demoFallback.clearCache();
+  }
+
   bool get _canUseSupabase =>
       !_supabaseService.isDemoMode &&
       _supabaseService.isInitialized &&
@@ -167,8 +239,13 @@ class SupabaseDiscoveryService implements DiscoveryService {
 
   @override
   Future<List<Discovery>> getDiscoveries({String? userId, bool? favoritesOnly}) async {
+    final effectiveUserId = userId ?? _supabaseService.auth?.currentUser?.id;
+    if (effectiveUserId == null || effectiveUserId.isEmpty || effectiveUserId == 'guest-user') {
+      return <Discovery>[];
+    }
+
     // 1. Load local cache first
-    final localList = await _demoFallback.getDiscoveries(userId: userId, favoritesOnly: favoritesOnly);
+    final localList = await _demoFallback.getDiscoveries(userId: effectiveUserId, favoritesOnly: favoritesOnly);
 
     if (!_canUseSupabase) {
       return localList;
@@ -176,6 +253,10 @@ class SupabaseDiscoveryService implements DiscoveryService {
 
     try {
       final currentUserId = _supabaseService.auth!.currentUser!.id;
+      if (effectiveUserId != currentUserId) {
+        return localList;
+      }
+
       var query = _supabaseService.from('discoveries')!.select().eq('user_id', currentUserId);
 
       if (favoritesOnly == true) {
@@ -185,17 +266,18 @@ class SupabaseDiscoveryService implements DiscoveryService {
       final response = await query.order('discovered_at', ascending: false);
       final remoteList = (response as List<dynamic>)
           .map((e) => Discovery.fromJson(e as Map<String, dynamic>))
+          .where((d) => d.userId == currentUserId)
           .toList();
 
       // Merge: remote takes precedence; preserve any local user discoveries not yet synced
       final remoteIds = remoteList.map((d) => d.id).toSet();
-      final localOnly = localList.where((d) => !remoteIds.contains(d.id)).toList();
+      final localOnly = localList.where((d) => d.userId == currentUserId && !remoteIds.contains(d.id)).toList();
 
       final combined = [...remoteList, ...localOnly];
       combined.sort((a, b) => b.discoveredAt.compareTo(a.discoveredAt));
 
-      // Update local store with fresh remote data
-      await LocalDiscoveryStore.saveAll(combined);
+      // Update local store with fresh remote data strictly for this user
+      await LocalDiscoveryStore.saveForUser(currentUserId, combined);
       return combined;
     } catch (e) {
       debugPrint('[Mossy] Supabase getDiscoveries failed: $e. Returning cached local finds.');

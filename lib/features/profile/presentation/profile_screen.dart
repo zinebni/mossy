@@ -7,7 +7,6 @@ import '../../../core/widgets/mossy_card.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/achievement.dart';
 import '../../../shared/providers/app_providers.dart';
-import '../../../shared/providers/auth_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -19,7 +18,6 @@ class ProfileScreen extends ConsumerWidget {
     final profileAsync = ref.watch(userProfileProvider);
     final achievementsAsync = ref.watch(achievementsProvider);
     final discoveryStats = ref.watch(discoveryStatsProvider);
-    final authState = ref.watch(authProvider);
 
     return PopScope(
       canPop: context.canPop(),
@@ -77,30 +75,6 @@ class ProfileScreen extends ConsumerWidget {
                     Text(profile.username, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                     Text(l10n?.explorerLevel(profile.explorerLevel) ?? 'Explorer Level ${profile.explorerLevel}',
                         style: const TextStyle(color: AppColors.sageGreen, fontWeight: FontWeight.w600)),
-                    if (authState.isGuest || !authState.isAuthenticated)
-                      GestureDetector(
-                        onTap: () => context.push('/auth'),
-                        child: Container(
-                          margin: const EdgeInsets.only(top: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.butterYellow.withAlpha(80),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.butterYellow),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                isFr ? 'Mode invité (connectez-vous pour sauvegarder)' : 'Guest Mode (Sign in to save progress)',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.arrow_forward_ios_rounded, size: 9, color: AppColors.darkGreen),
-                            ],
-                          ),
-                        ),
-                      ),
                   ])),
                 ]),
               ).animate().fadeIn(delay: 100.ms),

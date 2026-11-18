@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
+import '../../services/discovery_service.dart';
+import '../../services/quest_service.dart';
 import '../../services/supabase_service.dart';
 import '../models/user_profile.dart';
 
@@ -24,7 +26,7 @@ class AuthState {
   });
 
   bool get isAuthenticated => user != null;
-  bool get isGuest => user?.id == 'guest-user';
+  bool get isGuest => false; // Guest mode completely removed per strict authentication policy
 
   AuthState copyWith({
     UserProfile? user,
@@ -56,21 +58,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   StreamSubscription<supa.AuthState>? _authSubscription;
   bool _userActionOccurred = false;
 
+  /// External callback to purge all user data, database records, and in-memory caches on sign out
+  Future<void> Function(String? userId)? onPurgeUserData;
+
   static const String _sessionKey = 'mossy_active_session_profile';
   static const String _usersStoreKey = 'mossy_registered_users_store';
   static const String _loggedOutKey = 'mossy_explicitly_logged_out';
-
-  /// Fallback profile for guest or default states
-  static final UserProfile defaultProfile = UserProfile(
-    id: 'guest-user',
-    username: 'Nature Explorer',
-    totalPoints: 0,
-    explorerLevel: 1,
-    createdAt: DateTime.now(),
-  );
-
-  /// Deprecated alias for backwards-compatibility with tests
-  static UserProfile get demoUser => defaultProfile;
 
   AuthNotifier(this._supabaseService)
       : super(const AuthState(
@@ -109,7 +102,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (currentUser != null) {
       await _loadUserProfile(currentUser.id);
     } else {
-      await _restorePersistedSession();
+      await _clearPersistedSession();
+      if (!_userActionOccurred && mounted) {
+        state = state.copyWith(clearUser: true, isDemoMode: false);
+      }
     }
   }
 
@@ -131,6 +127,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (sessionJson != null && sessionJson.isNotEmpty) {
         final Map<String, dynamic> data = jsonDecode(sessionJson);
         final profile = UserProfile.fromJson(data);
+        // Strictly filter out any legacy guest or demo users
+        if (profile.id == 'guest-user' || profile.id == 'demo-user') {
+          await _clearPersistedSession();
+          if (!_userActionOccurred && mounted) {
+            state = state.copyWith(clearUser: true, isDemoMode: false);
+          }
+          return;
+        }
+
         if (!_userActionOccurred && mounted) {
           state = state.copyWith(user: profile, isDemoMode: false);
         }
@@ -412,9 +417,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Sign out and return to unauthenticated state.
+  /// Sign out, purge all local state and storage, and return strictly to unauthenticated state.
   Future<void> signOut() async {
     _userActionOccurred = true;
+    final exitingUserId = state.user?.id;
     try {
       if (!_supabaseService.isDemoMode && _supabaseService.isInitialized) {
         await _supabaseService.auth?.signOut();
@@ -422,32 +428,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       debugPrint('[Mossy] Sign out error: $e');
     } finally {
+      // Execute comprehensive state and storage purge
+      if (onPurgeUserData != null) {
+        try {
+          await onPurgeUserData!(exitingUserId);
+        } catch (e) {
+          debugPrint('[Mossy] onPurgeUserData error: $e');
+        }
+      }
       await _clearPersistedSession();
       state = const AuthState(user: null, isLoading: false, isDemoMode: false);
     }
   }
-
-  /// Switch to guest exploration mode.
-  Future<void> continueAsGuest() async {
-    _userActionOccurred = true;
-    final guestProfile = UserProfile(
-      id: 'guest-user',
-      username: 'Guest Explorer',
-      totalPoints: 0,
-      explorerLevel: 1,
-      createdAt: DateTime.now(),
-    );
-    await _persistSession(guestProfile);
-    state = state.copyWith(
-      user: guestProfile,
-      isDemoMode: false,
-      clearError: true,
-      isLoading: false,
-    );
-  }
-
-  /// Deprecated alias to support legacy calls without breaking
-  Future<void> enterDemoMode() => continueAsGuest();
 
   /// Clear any active error message.
   void clearError() {
@@ -505,5 +497,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
 /// Global provider for authentication state.
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final supabaseService = SupabaseService.instance;
-  return AuthNotifier(supabaseService);
+  final notifier = AuthNotifier(supabaseService);
+  notifier.onPurgeUserData = (userId) async {
+    if (userId != null && userId.isNotEmpty) {
+      await LocalDiscoveryStore.clearUser(userId);
+    }
+    await LocalDiscoveryStore.clearAll();
+    await LocalQuestService().clearAll();
+  };
+  return notifier;
 });

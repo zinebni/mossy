@@ -110,11 +110,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     }
   }
 
-  Future<void> _handleContinueAsGuest() async {
-    await ref.read(authProvider.notifier).continueAsGuest();
-    _navigateToHome();
-  }
-
   void _showForgotPasswordDialog() {
     final emailController = TextEditingController(text: _signInEmailController.text);
     final formKey = GlobalKey<FormState>();
@@ -264,27 +259,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               if (context.canPop()) {
                 context.pop();
               } else {
-                context.go('/home');
+                context.go('/auth');
               }
             },
           ),
-        actions: [
-          TextButton.icon(
-            key: const Key('auth_guest_button'),
-            onPressed: _handleContinueAsGuest,
-            icon: const Icon(Icons.explore_outlined, color: AppColors.secondaryText, size: 18),
-            label: Text(
-              'Guest Tour',
-              style: GoogleFonts.nunito(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.secondaryText,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+        ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
