@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/quest_service.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/mascot/mascot_expression.dart';
 import '../../../shared/widgets/mascot/mascot_with_accessory.dart';
+import 'widgets/challenge_detail_sheet.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // Adventures & Quests Screen
@@ -296,17 +299,19 @@ class _QuestList extends StatelessWidget {
 // Quest card
 // ════════════════════════════════════════════════════════════════════════════
 
-class _QuestCard extends StatelessWidget {
+class _QuestCard extends ConsumerWidget {
   final QuestWithProgress quest;
   final bool isFr;
 
   const _QuestCard({required this.quest, required this.isFr});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final def = quest.definition;
     final completed = quest.isCompleted;
     final fraction = quest.completionFraction;
+    final activeQuest = ref.watch(activeQuestProvider);
+    final isPrimed = activeQuest?.id == def.id;
 
     // Colour accent
     final accent = completed
@@ -315,135 +320,214 @@ class _QuestCard extends StatelessWidget {
             ? const Color(0xFF6B9FD4) // cornflower blue for daily
             : AppColors.butterYellow;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(14),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Column(children: [
-          // ── Top row ───────────────────────────────────────────────────────
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // Left accent bar
-            Container(
-              width: 5,
-              height: 110,
-              color: accent,
+    return GestureDetector(
+      onTap: () => ChallengeDetailSheet.show(context, quest),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: isPrimed && !completed
+              ? Border.all(color: AppColors.sageGreen, width: 2)
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: isPrimed && !completed
+                  ? AppColors.sageGreen.withAlpha(50)
+                  : Colors.black.withAlpha(14),
+              blurRadius: isPrimed && !completed ? 14 : 10,
+              offset: const Offset(0, 3),
             ),
-            // Emoji badge
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 14, 0, 14),
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: accent.withAlpha(30),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                alignment: Alignment.center,
-                child: Text(def.emoji, style: const TextStyle(fontSize: 24)),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Column(children: [
+            // ── Top row ───────────────────────────────────────────────────────
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // Left accent bar
+              Container(
+                width: 5,
+                height: 110,
+                color: isPrimed && !completed ? AppColors.sageGreen : accent,
               ),
-            ),
-            const SizedBox(width: 10),
-            // Title / description / XP
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, 14, 12, 14),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        Expanded(
-                          child: Text(
-                            def.title(isFr),
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w700),
+              // Emoji badge
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 14, 0, 14),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: accent.withAlpha(30),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(def.emoji, style: const TextStyle(fontSize: 24)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Title / description / XP
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 14, 12, 14),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Expanded(
+                            child: Text(
+                              def.title(isFr),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          if (completed)
+                            const Icon(Icons.check_circle_rounded,
+                                color: AppColors.sageGreen, size: 20)
+                          else ...[
+                            if (isPrimed) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.sageGreen.withAlpha(40),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  isFr ? 'PRÊT' : 'PRIMED',
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.darkGreen,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            _XpBadge(xp: def.xpReward),
+                          ],
+                        ]),
+                        const SizedBox(height: 4),
+                        Text(
+                          def.description(isFr),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.secondaryText,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        // Count label
+                        Text(
+                          completed
+                              ? (isFr ? '✅ Terminé !' : '✅ Completed!')
+                              : '${quest.currentCount} / ${quest.targetCount}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: completed
+                                ? AppColors.sageGreen
+                                : AppColors.secondaryText,
                           ),
                         ),
-                        if (completed)
-                          const Icon(Icons.check_circle_rounded,
-                              color: AppColors.sageGreen, size: 20)
-                        else
-                          _XpBadge(xp: def.xpReward),
                       ]),
-                      const SizedBox(height: 4),
-                      Text(
-                        def.description(isFr),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.secondaryText,
-                            ),
-                      ),
-                      const SizedBox(height: 6),
-                      // Count label
-                      Text(
-                        completed
-                            ? (isFr ? '✅ Terminé !' : '✅ Completed!')
-                            : '${quest.currentCount} / ${quest.targetCount}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: completed
-                              ? AppColors.sageGreen
-                              : AppColors.secondaryText,
-                        ),
-                      ),
-                    ]),
-              ),
-            ),
-          ]),
-
-          // ── Progress bar ──────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(5, 0, 5, 0),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: fraction,
-                minHeight: 6,
-                backgroundColor: accent.withAlpha(30),
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  completed ? AppColors.sageGreen : accent,
                 ),
               ),
-            ),
-          ),
+            ]),
 
-          // ── Tip row ───────────────────────────────────────────────────────
-          if (!completed)
+            // ── Progress bar ──────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(17, 6, 12, 10),
-              child: Row(children: [
-                Icon(Icons.tips_and_updates_outlined,
-                    size: 13, color: accent.withAlpha(200)),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    _tip(def, isFr),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.secondaryText.withAlpha(190),
-                      fontStyle: FontStyle.italic,
-                    ),
+              padding: const EdgeInsets.fromLTRB(5, 0, 5, 0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: fraction,
+                  minHeight: 6,
+                  backgroundColor: accent.withAlpha(30),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    completed ? AppColors.sageGreen : accent,
                   ),
                 ),
-              ]),
-            )
-          else
-            const SizedBox(height: 10),
-        ]),
+              ),
+            ),
+
+            // ── Tip row / Scan action ─────────────────────────────────────────
+            if (!completed)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 12, 10),
+                child: Row(children: [
+                  Icon(Icons.tips_and_updates_outlined,
+                      size: 13, color: accent.withAlpha(200)),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      _tip(def, isFr),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.secondaryText.withAlpha(190),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      ref.read(activeQuestProvider.notifier).state = def;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Text(def.emoji, style: const TextStyle(fontSize: 18)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  isFr
+                                      ? 'Défi activé : ${def.title(true)} — Scanner prêt !'
+                                      : 'Challenge active: ${def.title(false)} — Scanner primed!',
+                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: AppColors.sageGreen,
+                          duration: const Duration(seconds: 3),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      context.go(AppRouter.explorePath);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.mintGreen.withAlpha(90),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.sageGreen.withAlpha(120)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.center_focus_strong_rounded, size: 14, color: AppColors.darkGreen),
+                          const SizedBox(width: 4),
+                          Text(
+                            isFr ? 'Scanner' : 'Scan',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.darkGreen,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ]),
+              )
+            else
+              const SizedBox(height: 10),
+          ]),
+        ),
       ),
     );
   }

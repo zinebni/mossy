@@ -608,8 +608,10 @@ class QuestNotifier extends StateNotifier<AsyncValue<List<QuestWithProgress>>> {
   Future<void> loadQuests() async {
     try {
       final quests = await _service.getActiveQuestsWithProgress(_userId);
+      if (!mounted) return;
       state = AsyncValue.data(quests);
     } catch (e, st) {
+      if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
   }
@@ -655,3 +657,8 @@ final questsProvider = StateNotifierProvider<QuestNotifier,
   final userId = auth.user?.id ?? 'guest-user';
   return QuestNotifier(service, userId, ref);
 });
+
+/// Tracks the currently active / primed quest for the plant scanner.
+/// When set, the Explore screen prominently displays the quest goals,
+/// and specimen identification evaluates if the scanned plant matches.
+final activeQuestProvider = StateProvider<QuestDefinition?>((ref) => null);

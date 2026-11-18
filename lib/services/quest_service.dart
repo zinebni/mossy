@@ -67,6 +67,52 @@ class QuestDefinition {
 
   String title(bool isFr) => isFr ? titleFr : titleEn;
   String description(bool isFr) => isFr ? descriptionFr : descriptionEn;
+
+  /// Evaluates whether a plant candidate or discovery fulfills this quest's criteria.
+  bool matchesPlant({
+    required String family,
+    required String scientificName,
+    required String commonName,
+  }) {
+    switch (requirementType) {
+      case QuestRequirementType.anyPlant:
+        return true;
+      case QuestRequirementType.specificFamily:
+        final f = family.toLowerCase().trim();
+        // Meadow quest accepts Asteraceae or Poaceae
+        if (id == 'seasonal-meadow') {
+          return f == 'asteraceae' || f == 'poaceae';
+        }
+        return f == (requiredFamily?.toLowerCase().trim() ?? '');
+      case QuestRequirementType.countBased:
+        return true;
+      case QuestRequirementType.tagMatch:
+        final haystack = '$commonName $scientificName'.toLowerCase();
+        return requiredTags.any((tag) => haystack.contains(tag.toLowerCase()));
+    }
+  }
+
+  /// User-friendly label of the requirement for badges and challenge preview banners.
+  String targetRequirementLabel(bool isFr) {
+    switch (requirementType) {
+      case QuestRequirementType.specificFamily:
+        if (id == 'seasonal-meadow') {
+          return isFr
+              ? 'Famille : Asteraceae ou Poaceae'
+              : 'Family: Asteraceae or Poaceae';
+        }
+        return isFr
+            ? 'Famille : ${requiredFamily ?? "Spécifique"}'
+            : 'Family: ${requiredFamily ?? "Specific"}';
+      case QuestRequirementType.tagMatch:
+        return isFr
+            ? 'Mot-clé : ${requiredTags.join(", ")}'
+            : 'Keywords: ${requiredTags.join(", ")}';
+      case QuestRequirementType.anyPlant:
+      case QuestRequirementType.countBased:
+        return isFr ? 'Toute plante sauvage' : 'Any wild plant';
+    }
+  }
 }
 
 /// Mutable progress record for a single quest, persisted locally.
@@ -394,26 +440,11 @@ class LocalQuestService implements QuestService {
   // ---------------------------------------------------------------------------
 
   bool _matches(QuestDefinition def, Discovery discovery) {
-    switch (def.requirementType) {
-      case QuestRequirementType.anyPlant:
-        return true;
-
-      case QuestRequirementType.specificFamily:
-        final family = discovery.family.toLowerCase();
-        // Meadow quest also accepts Poaceae
-        if (def.id == 'seasonal-meadow') {
-          return family == 'asteraceae' || family == 'poaceae';
-        }
-        return family == (def.requiredFamily?.toLowerCase() ?? '');
-
-      case QuestRequirementType.countBased:
-        return true;
-
-      case QuestRequirementType.tagMatch:
-        final haystack =
-            '${discovery.commonName} ${discovery.scientificName}'.toLowerCase();
-        return def.requiredTags.any((tag) => haystack.contains(tag.toLowerCase()));
-    }
+    return def.matchesPlant(
+      family: discovery.family,
+      scientificName: discovery.scientificName,
+      commonName: discovery.commonName,
+    );
   }
 
   /// Clears daily quest progress when the calendar date has rolled over.

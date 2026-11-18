@@ -8,13 +8,13 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/mossy_card.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../services/quest_service.dart';
 import '../../../shared/models/discovery.dart';
-import '../../../shared/models/mission.dart';
-import '../../../shared/models/user_mission.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/mascot/mascot_expression.dart';
 import '../../../shared/widgets/mascot/mascot_with_accessory.dart';
 import '../../../shared/widgets/mascot/mossy_mascot.dart';
+import '../../adventures/presentation/widgets/challenge_detail_sheet.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -67,7 +67,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final profileAsync = ref.watch(userProfileProvider);
     final discoveriesAsync = ref.watch(discoveriesProvider);
-    final missionsAsync = ref.watch(missionsProvider);
+    final questsAsync = ref.watch(questsProvider);
     final gardenAsync = ref.watch(gardenStateProvider);
     final achievementsAsync = ref.watch(achievementsProvider);
 
@@ -174,6 +174,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           onRefresh: () async {
             ref.invalidate(userProfileProvider);
             ref.invalidate(discoveriesProvider);
+            ref.invalidate(questsProvider);
             ref.invalidate(missionsProvider);
             ref.invalidate(gardenStateProvider);
             ref.invalidate(achievementsProvider);
@@ -188,7 +189,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 const SizedBox(height: 18),
                 _buildExploreHeroCard(context, l10n, isFr),
                 const SizedBox(height: 24),
-                _buildDailyAdventureSection(context, l10n, isFr, missionsAsync),
+                _buildDailyAdventureSection(context, l10n, isFr, questsAsync),
                 const SizedBox(height: 24),
                 _buildRecentDiscoveriesSection(context, l10n, isFr, discoveriesAsync),
                 const SizedBox(height: 24),
@@ -337,7 +338,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     BuildContext context,
     AppLocalizations? l10n,
     bool isFr,
-    AsyncValue<List<UserMission>> missionsAsync,
+    AsyncValue<List<QuestWithProgress>> questsAsync,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,51 +349,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           onTap: () => context.go(AppRouter.adventuresPath),
         ),
         const SizedBox(height: 12),
-        missionsAsync.when(
+        questsAsync.when(
           loading: () => const Center(
-            child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(color: AppColors.sageGreen)),
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: CircularProgressIndicator(color: AppColors.sageGreen),
+            ),
           ),
-          error: (e, _) => Text(isFr ? 'Impossible de charger l\'aventure' : 'Could not load adventure: $e'),
-          data: (missions) {
-            final daily = missions.firstWhere(
-              (m) => m.mission?.category == MissionCategory.daily && !m.isCompleted,
-              orElse: () => missions.isNotEmpty
-                  ? missions.first
-                  : UserMission(
-                      id: 'demo-1',
-                      userId: 'demo',
-                      missionId: 'mission-001',
-                      status: UserMissionStatus.available,
-                      mission: Mission(
-                        id: 'mission-001',
-                        title: isFr ? 'Trouver une fleur jaune dorée' : 'Find a Golden Yellow Flower',
-                        description: isFr
-                            ? 'Cherchez dans les jardins ensoleillés des pétales jaune vif.'
-                            : 'Search sunny lawn edges, meadows, or gardens for bright yellow petals.',
-                        category: MissionCategory.daily,
-                        difficulty: MissionDifficulty.easy,
-                        rewardPoints: 60,
-                      ),
-                    ),
-            );
+          error: (e, _) => Text(
+            isFr ? 'Impossible de charger l\'aventure' : 'Could not load adventure: $e',
+          ),
+          data: (quests) {
+            final dailyList = quests.where((q) => q.definition.type == QuestType.daily).toList();
+            if (dailyList.isEmpty) return const SizedBox.shrink();
 
-            final missionObj = daily.mission;
+            final daily = dailyList.first;
+            final def = daily.definition;
             final isCompleted = daily.isCompleted;
-
-            String difficultyLabel(MissionDifficulty? d) {
-              if (d == null) return '';
-              switch (d) {
-                case MissionDifficulty.easy:
-                  return l10n?.easy.toUpperCase() ?? 'EASY';
-                case MissionDifficulty.medium:
-                  return l10n?.medium.toUpperCase() ?? 'MEDIUM';
-                case MissionDifficulty.hard:
-                  return l10n?.hard.toUpperCase() ?? 'HARD';
-              }
-            }
+            final activeQuest = ref.watch(activeQuestProvider);
+            final isPrimed = activeQuest?.id == def.id;
 
             return MossyCard(
-              onTap: () => context.go(AppRouter.adventuresPath),
+              onTap: () => ChallengeDetailSheet.show(context, daily),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -400,10 +378,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: AppColors.lavender, borderRadius: BorderRadius.circular(8)),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE3EDFA),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         child: Text(
-                          difficultyLabel(missionObj?.difficulty),
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF6B4B9A)),
+                          isFr ? 'DÉFI DU JOUR' : 'DAILY CHALLENGE',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF2E659A),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -416,15 +401,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.star_rounded, size: 14, color: Color(0xFFC4971A)),
+                            const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFFC4971A)),
                             const SizedBox(width: 3),
                             Text(
-                              '+${missionObj?.rewardPoints ?? 50} pts',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
+                              '+${def.xpReward} pts',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.darkGreen,
+                              ),
                             ),
                           ],
                         ),
                       ),
+                      if (isPrimed && !isCompleted) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.sageGreen.withAlpha(40),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.sageGreen),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.center_focus_strong_rounded, size: 12, color: AppColors.darkGreen),
+                              const SizedBox(width: 4),
+                              Text(
+                                isFr ? 'SCANNER PRÊT' : 'SCANNER PRIMED',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.darkGreen,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const Spacer(),
                       if (isCompleted)
                         const Icon(Icons.check_circle_rounded, color: AppColors.sageGreen, size: 20)
@@ -432,18 +447,125 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.mutedText),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    missionObj?.title ?? (isFr ? 'Quête nature' : 'Nature Quest'),
-                    style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.darkGreen),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6B9FD4).withAlpha(30),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(def.emoji, style: const TextStyle(fontSize: 22)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              def.title(isFr),
+                              style: GoogleFonts.nunito(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.darkGreen,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              def.description(isFr),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                color: AppColors.secondaryText,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    missionObj?.description ?? (isFr ? 'Explorez la nature et relevez des défis.' : 'Explore outdoor greens and complete nature challenges.'),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.nunito(fontSize: 13, color: AppColors.secondaryText),
+                  const SizedBox(height: 12),
+                  // Progress indicator row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: daily.completionFraction,
+                            minHeight: 6,
+                            backgroundColor: const Color(0xFF6B9FD4).withAlpha(30),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isCompleted ? AppColors.sageGreen : const Color(0xFF6B9FD4),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        isCompleted
+                            ? (isFr ? 'Terminé' : 'Completed')
+                            : '${daily.currentCount}/${daily.targetCount}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isCompleted ? AppColors.sageGreen : AppColors.secondaryText,
+                        ),
+                      ),
+                    ],
                   ),
+                  if (!isCompleted) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          ref.read(activeQuestProvider.notifier).state = def;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  Text(def.emoji, style: const TextStyle(fontSize: 18)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      isFr
+                                          ? 'Défi activé : ${def.title(true)} — Scanner prêt !'
+                                          : 'Challenge active: ${def.title(false)} — Scanner primed!',
+                                      style: const TextStyle(fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: AppColors.sageGreen,
+                              duration: const Duration(seconds: 3),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          context.go(AppRouter.explorePath);
+                        },
+                        icon: const Icon(Icons.center_focus_strong_rounded, size: 16, color: AppColors.darkGreen),
+                        label: Text(
+                          isFr ? 'Démarrer & Scanner' : 'Start & Scan',
+                          style: GoogleFonts.nunito(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.darkGreen,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          backgroundColor: AppColors.mintGreen.withAlpha(90),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             );

@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/mossy_card.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../services/quest_service.dart';
 import '../../../services/supabase_service.dart';
 import '../../../shared/models/discovery.dart';
 import '../../../shared/models/identification_result.dart';
@@ -175,6 +176,9 @@ class _ExploreHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final isFr = l10n?.home == 'Accueil';
+    final activeQuest = ref.watch(activeQuestProvider);
+
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
@@ -183,6 +187,10 @@ class _ExploreHomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              if (activeQuest != null) ...[
+                _buildActiveQuestBanner(context, ref, activeQuest, isFr),
+                const SizedBox(height: 12),
+              ],
               const SizedBox(height: 8),
               Animate(
                 effects: [
@@ -279,6 +287,134 @@ class _ExploreHomeScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _buildActiveQuestBanner(
+    BuildContext context,
+    WidgetRef ref,
+    QuestDefinition quest,
+    bool isFr,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.sageGreen, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.sageGreen.withAlpha(40),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.mintGreen,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.track_changes_rounded,
+                        size: 13, color: AppColors.darkGreen),
+                    const SizedBox(width: 4),
+                    Text(
+                      isFr ? 'DÉFI PRIMÉ' : 'PRIMED CHALLENGE',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkGreen,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.butterYellow.withAlpha(60),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '+${quest.xpReward} XP',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.darkGreen,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: () =>
+                    ref.read(activeQuestProvider.notifier).state = null,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        isFr ? 'Effacer' : 'Clear',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.secondaryText,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(Icons.close_rounded,
+                          size: 15, color: AppColors.secondaryText),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Text(quest.emoji, style: const TextStyle(fontSize: 26)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      quest.title(isFr),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkGreen,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      quest.targetRequirementLabel(isFr),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1);
+  }
 }
 
 class _ActionCard extends StatelessWidget {
@@ -341,6 +477,9 @@ class _ImagePreviewScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final isFr = l10n?.home == 'Accueil';
+    final activeQuest = ref.watch(activeQuestProvider);
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -392,6 +531,37 @@ class _ImagePreviewScreen extends ConsumerWidget {
             ),
             child: Column(
               children: [
+                if (activeQuest != null) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.mintGreen.withAlpha(90),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.sageGreen),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(activeQuest.emoji, style: const TextStyle(fontSize: 15)),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            isFr
+                                ? 'Test pour : ${activeQuest.title(true)}'
+                                : 'Evaluating for: ${activeQuest.title(false)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.darkGreen,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 Text(
                   l10n?.identifyPlant ?? 'Ready to identify!',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -643,20 +813,42 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
       await discoveryNotifier.addDiscovery(discovery);
       await ref.read(userProfileProvider.notifier).addPoints(15, 'plant_identified');
 
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-          _isSaved = true;
-        });
+      final activeQuest = ref.read(activeQuestProvider);
+      final isQuestMatch = activeQuest != null &&
+          activeQuest.matchesPlant(
+            family: candidate.family,
+            scientificName: candidate.scientificName,
+            commonName: candidate.commonName,
+          );
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🌿 Discovery saved to your Journal! +15 points'),
-            backgroundColor: AppColors.sageGreen,
-            duration: Duration(seconds: 3),
-          ),
-        );
+      if (isQuestMatch) {
+        ref.read(activeQuestProvider.notifier).state = null;
       }
+
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      final isFr = l10n?.home == 'Accueil';
+
+      setState(() {
+        _isSaving = false;
+        _isSaved = true;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isQuestMatch
+                ? (isFr
+                    ? '🎉 Plante enregistrée & Défi validé ! +${activeQuest.xpReward + 15} points'
+                    : '🎉 Plant saved & Challenge completed! +${activeQuest.xpReward + 15} points')
+                : (isFr
+                    ? '🌿 Découverte enregistrée dans votre Journal ! +15 points'
+                    : '🌿 Discovery saved to your Journal! +15 points'),
+          ),
+          backgroundColor: AppColors.sageGreen,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     } catch (e) {
       debugPrint('[Mossy] Error saving discovery: $e');
       if (mounted) {
@@ -674,7 +866,16 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final isFr = l10n?.home == 'Accueil';
     final candidate = _selectedCandidate ?? widget.result.bestMatch;
+    final activeQuest = ref.watch(activeQuestProvider);
+    final bool isQuestMatch = activeQuest != null &&
+        candidate != null &&
+        activeQuest.matchesPlant(
+          family: candidate.family,
+          scientificName: candidate.scientificName,
+          commonName: candidate.commonName,
+        );
 
     return PopScope(
       canPop: !_isSaving,
@@ -770,6 +971,116 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
                       ],
                     ),
                     const SizedBox(height: 20),
+                  ],
+
+                  if (activeQuest != null && candidate != null) ...[
+                    if (isQuestMatch)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.mintLight,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.sageGreen, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.sageGreen.withAlpha(40),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.sageGreen,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.verified_rounded,
+                                  color: Colors.white, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        isFr
+                                            ? '🎯 Correspondance Défi !'
+                                            : '🎯 Challenge Match Found!',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14,
+                                          color: AppColors.darkGreen,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.butterYellow,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          '+${activeQuest.xpReward} XP',
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.darkGreen,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    isFr
+                                        ? 'Cette plante remplit les critères de « ${activeQuest.title(true)} » ! Enregistrez-la pour valider votre défi.'
+                                        : 'This plant fulfills "${activeQuest.title(false)}"! Save it to complete your quest.',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.secondaryText,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ).animate().scale(duration: 350.ms, curve: Curves.easeOutBack)
+                    else
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.borderLight),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline_rounded,
+                                size: 20, color: AppColors.mutedText),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                isFr
+                                    ? 'Ne correspond pas au défi « ${activeQuest.title(true)} » (${activeQuest.targetRequirementLabel(true)}). Vous pouvez tout de même l\'enregistrer !'
+                                    : 'Does not match active challenge "${activeQuest.title(false)}" (${activeQuest.targetRequirementLabel(false)}). You can still save it!',
+                                style: const TextStyle(
+                                    fontSize: 11, color: AppColors.secondaryText),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
 
                   if (widget.result.candidates.length > 1) ...[
