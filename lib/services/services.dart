@@ -1,4 +1,5 @@
 export 'achievement_service.dart';
+export 'quest_service.dart';
 export 'ai_content_service.dart';
 export 'camera_service.dart';
 export 'discovery_service.dart';

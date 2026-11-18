@@ -321,6 +321,9 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 200));
 
+      // Scroll into view in case the button is below the fold in test viewport
+      await tester.ensureVisible(find.byKey(const Key('auth_signin_button')));
+      await tester.pumpAndSettle();
       // Tap signin button without typing
       await tester.tap(find.byKey(const Key('auth_signin_button')));
       await tester.pump(const Duration(milliseconds: 200));

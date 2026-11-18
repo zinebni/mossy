@@ -13,6 +13,7 @@ import '../../services/location_service.dart';
 import '../../services/mission_service.dart';
 import '../../services/plant_identification_service.dart';
 import '../../services/points_service.dart';
+import '../../services/quest_service.dart';
 import '../../services/supabase_service.dart';
 
 import '../models/achievement.dart';
@@ -117,6 +118,11 @@ final imageStorageServiceProvider = Provider<ImageStorageService>((ref) {
   return ImageStorageService(supabaseService: supabase);
 });
 
+/// Provider for local-first Adventure Quests engine.
+final questServiceProvider = Provider<QuestService>((ref) {
+  return LocalQuestService();
+});
+
 // ============================================================================
 // 2. STATE NOTIFIERS AND DATA PROVIDERS
 // ============================================================================
@@ -125,8 +131,9 @@ final imageStorageServiceProvider = Provider<ImageStorageService>((ref) {
 class DiscoveriesNotifier extends StateNotifier<AsyncValue<List<Discovery>>> {
   final DiscoveryService _service;
   final String _userId;
+  final Ref _ref;
 
-  DiscoveriesNotifier(this._service, this._userId)
+  DiscoveriesNotifier(this._service, this._userId, this._ref)
       : super(const AsyncValue.loading()) {
     loadDiscoveries();
   }
@@ -145,6 +152,13 @@ class DiscoveriesNotifier extends StateNotifier<AsyncValue<List<Discovery>>> {
     try {
       final saved = await _service.saveDiscovery(discovery);
       state = state.whenData((list) => [saved, ...list.where((d) => d.id != saved.id)]);
+
+      // Quest integration — non-critical: a failure must not break the save.
+      try {
+        await _ref.read(questsProvider.notifier).onDiscoverySaved(saved);
+      } catch (e) {
+        debugPrint('[Mossy] Quest update skipped (non-critical): $e');
+      }
     } catch (e) {
       state = previousState;
       debugPrint('[Mossy] Failed to save discovery: $e');
@@ -194,7 +208,7 @@ final discoveriesProvider =
   final service = ref.watch(discoveryServiceProvider);
   final auth = ref.watch(authProvider);
   final userId = auth.user?.id ?? 'guest-user';
-  return DiscoveriesNotifier(service, userId);
+  return DiscoveriesNotifier(service, userId, ref);
 });
 
 /// Notifier managing active, in-progress, and completed user challenges.
@@ -573,4 +587,71 @@ class LocaleNotifier extends StateNotifier<Locale> {
 /// Global provider for active app Locale.
 final localeProvider = StateNotifierProvider<LocaleNotifier, Locale>((ref) {
   return LocaleNotifier();
+});
+
+// ============================================================================
+// 4. ADVENTURE QUESTS ENGINE
+// ============================================================================
+
+/// Notifier that manages active quest state and XP rewards on discovery save.
+class QuestNotifier extends StateNotifier<AsyncValue<List<QuestWithProgress>>> {
+  final QuestService _service;
+  final String _userId;
+  final Ref _ref;
+
+  QuestNotifier(this._service, this._userId, this._ref)
+      : super(const AsyncValue.loading()) {
+    loadQuests();
+  }
+
+  /// Loads (or refreshes) all active quests with the user's current progress.
+  Future<void> loadQuests() async {
+    try {
+      final quests = await _service.getActiveQuestsWithProgress(_userId);
+      state = AsyncValue.data(quests);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  /// Called whenever a plant is saved. Updates quest progress and awards XP
+  /// for any quests newly completed by this discovery.
+  ///
+  /// Returns the number of quests completed so the UI can celebrate.
+  Future<int> onDiscoverySaved(Discovery discovery) async {
+    try {
+      final completed =
+          await _service.onDiscoverySaved(_userId, discovery);
+
+      if (completed.isNotEmpty) {
+        // Award XP for each completed quest.
+        for (final def in completed) {
+          try {
+            await _ref
+                .read(userProfileProvider.notifier)
+                .addPoints(def.xpReward, 'quest_completed',
+                    referenceId: def.id);
+          } catch (e) {
+            debugPrint('[Mossy] Quest XP award failed: $e');
+          }
+        }
+      }
+
+      // Always refresh the quest list after a save.
+      await loadQuests();
+      return completed.length;
+    } catch (e) {
+      debugPrint('[Mossy] QuestNotifier.onDiscoverySaved error: $e');
+      return 0;
+    }
+  }
+}
+
+/// Global provider for Adventure Quests.
+final questsProvider = StateNotifierProvider<QuestNotifier,
+    AsyncValue<List<QuestWithProgress>>>((ref) {
+  final service = ref.watch(questServiceProvider);
+  final auth = ref.watch(authProvider);
+  final userId = auth.user?.id ?? 'guest-user';
+  return QuestNotifier(service, userId, ref);
 });
