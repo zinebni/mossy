@@ -23,17 +23,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final currentLocale = ref.watch(localeProvider);
     final languageName = currentLocale.languageCode == 'fr' ? 'Français' : 'English';
 
-    return Scaffold(
-      backgroundColor: AppColors.cream,
-      appBar: AppBar(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
         backgroundColor: AppColors.cream,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.darkGreen),
-          onPressed: () => context.pop(),
+        appBar: AppBar(
+          backgroundColor: AppColors.cream,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: AppColors.darkGreen),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+          ),
+          title: Text('Settings', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppColors.darkGreen)),
+          elevation: 0,
         ),
-        title: Text('Settings', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppColors.darkGreen)),
-        elevation: 0,
-      ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -77,7 +90,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _Divider(),
               _ListTile(icon: Icons.privacy_tip_outlined, title: 'Privacy Policy', onTap: () {}),
               _Divider(),
-              _ListTile(icon: Icons.map_outlined, title: 'Discovery Map', onTap: () => context.go('/map')),
+              _ListTile(icon: Icons.map_outlined, title: 'Discovery Map', onTap: () => context.push('/map')),
             ]),
           ),
           const SizedBox(height: 20),
@@ -136,7 +149,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Center(child: Text('Mossy — Look closer. Discover more.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText, fontStyle: FontStyle.italic))),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _sectionLabel(String label) => Padding(

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../shared/models/ai_content.dart';
 import '../shared/models/discovery.dart';
 import 'supabase_service.dart';
@@ -15,12 +17,15 @@ abstract class DiscoveryService {
   Future<List<String>> getDiscoveredFamilies({String? userId});
 }
 
-/// In-memory demo discovery service pre-seeded with realistic botanical finds.
-class DemoDiscoveryService implements DiscoveryService {
-  static final List<Discovery> _initialDiscoveries = [
+/// Persistent local storage helper for the Nature Discovery Journal.
+/// Keeps all user finds saved across app launches even when offline or in guest mode.
+class LocalDiscoveryStore {
+  static const String _storageKey = 'mossy_user_discoveries_journal';
+
+  static final List<Discovery> starterDiscoveries = [
     Discovery(
-      id: 'disc-001',
-      userId: 'demo-user',
+      id: 'd1000000-0000-0000-0000-000000000001',
+      userId: 'starter-guide',
       scientificName: 'Bellis perennis',
       commonName: 'Common Daisy',
       family: 'Asteraceae',
@@ -28,7 +33,7 @@ class DemoDiscoveryService implements DiscoveryService {
       imagePath: 'https://images.unsplash.com/photo-1560717789-0ac7c58ac90a?auto=format&fit=crop&w=800&q=80',
       latitude: 51.5074,
       longitude: -0.1278,
-      personalNotes: 'Found thriving in the sunny lawn near the pond. Opening wide in morning light!',
+      personalNotes: 'Found thriving in the sunny meadow near the pond. Opening wide in morning light!',
       isFavorite: true,
       discoveredAt: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
       createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 3)),
@@ -46,8 +51,8 @@ class DemoDiscoveryService implements DiscoveryService {
       ),
     ),
     Discovery(
-      id: 'disc-002',
-      userId: 'demo-user',
+      id: 'd1000000-0000-0000-0000-000000000002',
+      userId: 'starter-guide',
       scientificName: 'Taraxacum officinale',
       commonName: 'Common Dandelion',
       family: 'Asteraceae',
@@ -55,7 +60,7 @@ class DemoDiscoveryService implements DiscoveryService {
       imagePath: 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=800&q=80',
       latitude: 51.5090,
       longitude: -0.1300,
-      personalNotes: 'Spotted next to the ancient stone wall. Several honeybees were feeding.',
+      personalNotes: 'Spotted next to the ancient stone wall. Several honeybees were feeding on the rich nectar.',
       isFavorite: false,
       discoveredAt: DateTime.now().subtract(const Duration(days: 2, hours: 5)),
       createdAt: DateTime.now().subtract(const Duration(days: 2, hours: 5)),
@@ -72,8 +77,8 @@ class DemoDiscoveryService implements DiscoveryService {
       ),
     ),
     Discovery(
-      id: 'disc-003',
-      userId: 'demo-user',
+      id: 'd1000000-0000-0000-0000-000000000003',
+      userId: 'starter-guide',
       scientificName: 'Rosa canina',
       commonName: 'Dog Rose',
       family: 'Rosaceae',
@@ -98,8 +103,8 @@ class DemoDiscoveryService implements DiscoveryService {
       ),
     ),
     Discovery(
-      id: 'disc-004',
-      userId: 'demo-user',
+      id: 'd1000000-0000-0000-0000-000000000004',
+      userId: 'starter-guide',
       scientificName: 'Lavandula angustifolia',
       commonName: 'English Lavender',
       family: 'Lamiaceae',
@@ -124,8 +129,8 @@ class DemoDiscoveryService implements DiscoveryService {
       ),
     ),
     Discovery(
-      id: 'disc-005',
-      userId: 'demo-user',
+      id: 'd1000000-0000-0000-0000-000000000005',
+      userId: 'starter-guide',
       scientificName: 'Hedera helix',
       commonName: 'Common Ivy',
       family: 'Araliaceae',
@@ -151,8 +156,8 @@ class DemoDiscoveryService implements DiscoveryService {
       ),
     ),
     Discovery(
-      id: 'disc-006',
-      userId: 'demo-user',
+      id: 'd1000000-0000-0000-0000-000000000006',
+      userId: 'starter-guide',
       scientificName: 'Trifolium repens',
       commonName: 'White Clover',
       family: 'Fabaceae',
@@ -178,27 +183,67 @@ class DemoDiscoveryService implements DiscoveryService {
     ),
   ];
 
-  final List<Discovery> _discoveries = List.from(_initialDiscoveries);
+  static Future<List<Discovery>> loadAll() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_storageKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final List<dynamic> decoded = jsonDecode(jsonStr);
+        return decoded
+            .map((e) => Discovery.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      // First boot: pre-seed starter discoveries and persist them
+      await saveAll(starterDiscoveries);
+      return List<Discovery>.from(starterDiscoveries);
+    } catch (e) {
+      debugPrint('[Mossy] LocalDiscoveryStore load error: $e');
+      return List<Discovery>.from(starterDiscoveries);
+    }
+  }
+
+  static Future<void> saveAll(List<Discovery> list) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = jsonEncode(list.map((d) => d.toJson()).toList());
+      await prefs.setString(_storageKey, jsonStr);
+    } catch (e) {
+      debugPrint('[Mossy] LocalDiscoveryStore saveAll error: $e');
+    }
+  }
+}
+
+/// Demo & offline implementation of [DiscoveryService] with persistent local storage.
+class DemoDiscoveryService implements DiscoveryService {
+  List<Discovery>? _cache;
+
+  Future<List<Discovery>> _ensureLoaded() async {
+    _cache ??= await LocalDiscoveryStore.loadAll();
+    return _cache!;
+  }
 
   @override
   Future<List<Discovery>> getDiscoveries({String? userId, bool? favoritesOnly}) async {
-    await Future.delayed(const Duration(milliseconds: 150));
-    var list = List<Discovery>.from(_discoveries);
-    if (userId != null && userId.isNotEmpty) {
-      list = list.where((d) => d.userId == userId || d.userId == 'demo-user').toList();
+    final list = await _ensureLoaded();
+    var result = List<Discovery>.from(list);
+
+    if (userId != null && userId.isNotEmpty && userId != 'guest-user') {
+      result = result
+          .where((d) => d.userId == userId || d.userId == 'starter-guide' || d.userId == 'demo-user')
+          .toList();
     }
     if (favoritesOnly == true) {
-      list = list.where((d) => d.isFavorite).toList();
+      result = result.where((d) => d.isFavorite).toList();
     }
-    list.sort((a, b) => b.discoveredAt.compareTo(a.discoveredAt));
-    return list;
+    result.sort((a, b) => b.discoveredAt.compareTo(a.discoveredAt));
+    return result;
   }
 
   @override
   Future<Discovery?> getDiscoveryById(String id) async {
-    await Future.delayed(const Duration(milliseconds: 80));
+    final list = await _ensureLoaded();
     try {
-      return _discoveries.firstWhere((d) => d.id == id);
+      return list.firstWhere((d) => d.id == id);
     } catch (_) {
       return null;
     }
@@ -206,13 +251,14 @@ class DemoDiscoveryService implements DiscoveryService {
 
   @override
   Future<Discovery> saveDiscovery(Discovery discovery) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    final index = _discoveries.indexWhere((d) => d.id == discovery.id);
+    final list = await _ensureLoaded();
+    final index = list.indexWhere((d) => d.id == discovery.id);
     if (index >= 0) {
-      _discoveries[index] = discovery;
+      list[index] = discovery;
     } else {
-      _discoveries.insert(0, discovery);
+      list.insert(0, discovery);
     }
+    await LocalDiscoveryStore.saveAll(list);
     return discovery;
   }
 
@@ -223,20 +269,22 @@ class DemoDiscoveryService implements DiscoveryService {
 
   @override
   Future<void> deleteDiscovery(String id) async {
-    await Future.delayed(const Duration(milliseconds: 150));
-    _discoveries.removeWhere((d) => d.id == id);
+    final list = await _ensureLoaded();
+    list.removeWhere((d) => d.id == id);
+    await LocalDiscoveryStore.saveAll(list);
   }
 
   @override
   Future<Discovery> toggleFavorite(String id) async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    final index = _discoveries.indexWhere((d) => d.id == id);
+    final list = await _ensureLoaded();
+    final index = list.indexWhere((d) => d.id == id);
     if (index < 0) {
       throw Exception('Discovery not found: $id');
     }
-    final current = _discoveries[index];
+    final current = list[index];
     final updated = current.copyWith(isFavorite: !current.isFavorite);
-    _discoveries[index] = updated;
+    list[index] = updated;
+    await LocalDiscoveryStore.saveAll(list);
     return updated;
   }
 
@@ -255,42 +303,59 @@ class DemoDiscoveryService implements DiscoveryService {
   }
 }
 
-/// Supabase backed implementation of [DiscoveryService].
+/// Supabase backed implementation of [DiscoveryService] with local persistent caching.
 class SupabaseDiscoveryService implements DiscoveryService {
   final SupabaseService _supabaseService;
   final DemoDiscoveryService _demoFallback = DemoDiscoveryService();
 
   SupabaseDiscoveryService(this._supabaseService);
 
+  bool get _canUseSupabase =>
+      !_supabaseService.isDemoMode &&
+      _supabaseService.isInitialized &&
+      _supabaseService.auth?.currentUser != null;
+
   @override
   Future<List<Discovery>> getDiscoveries({String? userId, bool? favoritesOnly}) async {
-    if (_supabaseService.isDemoMode || !_supabaseService.isInitialized) {
-      return _demoFallback.getDiscoveries(userId: userId, favoritesOnly: favoritesOnly);
+    // 1. Load local cache first
+    final localList = await _demoFallback.getDiscoveries(userId: userId, favoritesOnly: favoritesOnly);
+
+    if (!_canUseSupabase) {
+      return localList;
     }
 
     try {
-      var query = _supabaseService.from('discoveries')!.select();
-      if (userId != null && userId.isNotEmpty) {
-        query = query.eq('user_id', userId);
-      }
+      final currentUserId = _supabaseService.auth!.currentUser!.id;
+      var query = _supabaseService.from('discoveries')!.select().eq('user_id', currentUserId);
+
       if (favoritesOnly == true) {
         query = query.eq('is_favorite', true);
       }
 
       final response = await query.order('discovered_at', ascending: false);
-      final list = (response as List<dynamic>)
+      final remoteList = (response as List<dynamic>)
           .map((e) => Discovery.fromJson(e as Map<String, dynamic>))
           .toList();
-      return list;
+
+      // Merge: remote takes precedence; preserve any local user discoveries not yet synced
+      final remoteIds = remoteList.map((d) => d.id).toSet();
+      final localOnly = localList.where((d) => !remoteIds.contains(d.id)).toList();
+
+      final combined = [...remoteList, ...localOnly];
+      combined.sort((a, b) => b.discoveredAt.compareTo(a.discoveredAt));
+
+      // Update local store with fresh remote data
+      await LocalDiscoveryStore.saveAll(combined);
+      return combined;
     } catch (e) {
-      debugPrint('[Mossy] Supabase getDiscoveries failed: $e. Falling back to demo.');
-      return _demoFallback.getDiscoveries(userId: userId, favoritesOnly: favoritesOnly);
+      debugPrint('[Mossy] Supabase getDiscoveries failed: $e. Returning cached local finds.');
+      return localList;
     }
   }
 
   @override
   Future<Discovery?> getDiscoveryById(String id) async {
-    if (_supabaseService.isDemoMode || !_supabaseService.isInitialized) {
+    if (!_canUseSupabase) {
       return _demoFallback.getDiscoveryById(id);
     }
 
@@ -301,22 +366,57 @@ class SupabaseDiscoveryService implements DiscoveryService {
           .eq('id', id)
           .maybeSingle();
 
-      if (response == null) return null;
-      return Discovery.fromJson(response);
+      if (response != null) {
+        return Discovery.fromJson(response);
+      }
+      return await _demoFallback.getDiscoveryById(id);
     } catch (e) {
-      debugPrint('[Mossy] Supabase getDiscoveryById failed: $e. Using demo fallback.');
+      debugPrint('[Mossy] Supabase getDiscoveryById failed: $e. Using local store.');
       return _demoFallback.getDiscoveryById(id);
     }
   }
 
   @override
   Future<Discovery> saveDiscovery(Discovery discovery) async {
-    if (_supabaseService.isDemoMode || !_supabaseService.isInitialized) {
-      return _demoFallback.saveDiscovery(discovery);
+    // 1. Immediately persist locally so finds are never lost
+    final saved = await _demoFallback.saveDiscovery(discovery);
+
+    if (!_canUseSupabase) {
+      return saved;
+    }
+
+    // 2. Sync to Supabase PostgreSQL when user is authenticated with a valid UUID
+    try {
+      final currentUser = _supabaseService.auth!.currentUser!;
+      final payload = discovery.copyWith(userId: currentUser.id).toJson();
+
+      final response = await _supabaseService
+          .from('discoveries')!
+          .upsert(payload)
+          .select()
+          .single();
+
+      final remoteDiscovery = Discovery.fromJson(response);
+      await _demoFallback.saveDiscovery(remoteDiscovery);
+      return remoteDiscovery;
+    } catch (e) {
+      debugPrint('[Mossy] Supabase saveDiscovery remote sync failed: $e. Saved locally.');
+      return saved;
+    }
+  }
+
+  @override
+  Future<Discovery> updateDiscovery(Discovery discovery) async {
+    final updated = await _demoFallback.updateDiscovery(discovery);
+
+    if (!_canUseSupabase) {
+      return updated;
     }
 
     try {
-      final payload = discovery.toJson();
+      final currentUser = _supabaseService.auth!.currentUser!;
+      final payload = discovery.copyWith(userId: currentUser.id).toJson();
+
       final response = await _supabaseService
           .from('discoveries')!
           .upsert(payload)
@@ -325,52 +425,43 @@ class SupabaseDiscoveryService implements DiscoveryService {
 
       return Discovery.fromJson(response);
     } catch (e) {
-      debugPrint('[Mossy] Supabase saveDiscovery failed: $e. Using demo fallback.');
-      return _demoFallback.saveDiscovery(discovery);
+      debugPrint('[Mossy] Supabase updateDiscovery failed: $e. Local update preserved.');
+      return updated;
     }
   }
 
   @override
-  Future<Discovery> updateDiscovery(Discovery discovery) async {
-    return saveDiscovery(discovery);
-  }
-
-  @override
   Future<void> deleteDiscovery(String id) async {
-    if (_supabaseService.isDemoMode || !_supabaseService.isInitialized) {
-      return _demoFallback.deleteDiscovery(id);
+    await _demoFallback.deleteDiscovery(id);
+
+    if (!_canUseSupabase) {
+      return;
     }
 
     try {
       await _supabaseService.from('discoveries')!.delete().eq('id', id);
     } catch (e) {
-      debugPrint('[Mossy] Supabase deleteDiscovery failed: $e. Using demo fallback.');
-      await _demoFallback.deleteDiscovery(id);
+      debugPrint('[Mossy] Supabase deleteDiscovery failed: $e. Local deletion preserved.');
     }
   }
 
   @override
   Future<Discovery> toggleFavorite(String id) async {
-    if (_supabaseService.isDemoMode || !_supabaseService.isInitialized) {
-      return _demoFallback.toggleFavorite(id);
+    final updated = await _demoFallback.toggleFavorite(id);
+
+    if (!_canUseSupabase) {
+      return updated;
     }
 
     try {
-      final current = await getDiscoveryById(id);
-      if (current == null) throw Exception('Discovery not found: $id');
-      final updatedFavorite = !current.isFavorite;
-
-      final response = await _supabaseService
+      await _supabaseService
           .from('discoveries')!
-          .update({'is_favorite': updatedFavorite})
-          .eq('id', id)
-          .select()
-          .single();
-
-      return Discovery.fromJson(response);
+          .update({'is_favorite': updated.isFavorite})
+          .eq('id', id);
+      return updated;
     } catch (e) {
-      debugPrint('[Mossy] Supabase toggleFavorite failed: $e. Using demo fallback.');
-      return _demoFallback.toggleFavorite(id);
+      debugPrint('[Mossy] Supabase toggleFavorite sync failed: $e. Local toggle preserved.');
+      return updated;
     }
   }
 

@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
+import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/mossy_card.dart';
+import '../../../services/supabase_service.dart';
 import '../../../shared/models/discovery.dart';
 import '../../../shared/models/identification_result.dart';
 import '../../../shared/models/plant_candidate.dart';
@@ -108,26 +112,36 @@ class ExploreScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final exploreState = ref.watch(exploreProvider);
+    final hasActiveSubScreen = exploreState.isIdentifying ||
+        (exploreState.result != null && exploreState.currentImage != null) ||
+        exploreState.currentImage != null;
 
+    Widget body;
     if (exploreState.isIdentifying) {
-      return const _IdentificationLoadingScreen();
-    }
-
-    if (exploreState.result != null && exploreState.currentImage != null) {
-      return _IdentificationResultScreen(
+      body = const _IdentificationLoadingScreen();
+    } else if (exploreState.result != null && exploreState.currentImage != null) {
+      body = _IdentificationResultScreen(
         result: exploreState.result!,
         imageFile: exploreState.currentImage!,
       );
-    }
-
-    if (exploreState.currentImage != null) {
-      return _ImagePreviewScreen(
+    } else if (exploreState.currentImage != null) {
+      body = _ImagePreviewScreen(
         imageFile: exploreState.currentImage!,
         errorMessage: exploreState.errorMessage,
       );
+    } else {
+      body = const _ExploreHomeScreen();
     }
 
-    return const _ExploreHomeScreen();
+    return PopScope(
+      canPop: !hasActiveSubScreen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && hasActiveSubScreen) {
+          ref.read(exploreProvider.notifier).reset();
+        }
+      },
+      child: body,
+    );
   }
 }
 
@@ -533,10 +547,47 @@ class _IdentificationResultScreen extends ConsumerWidget {
   Future<void> _saveDiscovery(BuildContext context, WidgetRef ref, PlantCandidate candidate) async {
     try {
       final auth = ref.read(authProvider);
-      final userId = auth.user?.id ?? 'guest-user';
+      final currentUser = SupabaseService.instance.auth?.currentUser;
+      final userId = currentUser?.id ?? auth.user?.id ?? 'guest-user';
       final aiService = ref.read(aiContentServiceProvider);
       final discoveryNotifier = ref.read(discoveriesProvider.notifier);
+      final discoveryId = const Uuid().v4();
 
+      // 1. Copy high-res image to persistent documents directory
+      String persistentImagePath = imageFile.path;
+      try {
+        final docsDir = await getApplicationDocumentsDirectory();
+        final ext = imageFile.name.contains('.') ? imageFile.name.split('.').last : 'jpg';
+        final savedFile = File('${docsDir.path}/discovery_$discoveryId.$ext');
+        await File(imageFile.path).copy(savedFile.path);
+        persistentImagePath = savedFile.path;
+      } catch (e) {
+        debugPrint('[Mossy] Could not copy photo to docs dir: $e');
+      }
+
+      // 2. If authenticated, optionally upload to Supabase storage bucket
+      if (currentUser != null && SupabaseService.instance.storage != null) {
+        try {
+          final file = File(persistentImagePath);
+          if (file.existsSync()) {
+            final storagePath = '${currentUser.id}/$discoveryId.jpg';
+            final bytes = await file.readAsBytes();
+            await SupabaseService.instance.storage!
+                .from('discovery-photos')
+                .uploadBinary(storagePath, bytes, fileOptions: const FileOptions(upsert: true));
+            final publicUrl = SupabaseService.instance.storage!
+                .from('discovery-photos')
+                .getPublicUrl(storagePath);
+            if (publicUrl.isNotEmpty) {
+              persistentImagePath = publicUrl;
+            }
+          }
+        } catch (e) {
+          debugPrint('[Mossy] Cloud image upload skipped/failed: $e');
+        }
+      }
+
+      // 3. Generate structured botanical lore from Gemini
       final aiContent = await aiService.generateContent(
         candidate.scientificName,
         candidate.commonName,
@@ -544,26 +595,28 @@ class _IdentificationResultScreen extends ConsumerWidget {
         'en',
       );
 
+      // 4. Construct complete Discovery entry
       final discovery = Discovery(
-        id: 'disc-${DateTime.now().millisecondsSinceEpoch}',
+        id: discoveryId,
         userId: userId,
         commonName: candidate.commonName.isNotEmpty ? candidate.commonName : candidate.scientificName,
         scientificName: candidate.scientificName,
         family: candidate.family,
-        imagePath: imageFile.path,
+        imagePath: persistentImagePath,
         discoveredAt: DateTime.now(),
         createdAt: DateTime.now(),
         identificationScore: candidate.score,
         aiContent: aiContent,
       );
 
+      // 5. Save to journal
       await discoveryNotifier.addDiscovery(discovery);
       await ref.read(userProfileProvider.notifier).addPoints(15, 'plant_identified');
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('🌿 Discovery saved! +15 points'),
+            content: Text('🌿 Discovery saved to your Journal! +15 points'),
             backgroundColor: AppColors.sageGreen,
           ),
         );

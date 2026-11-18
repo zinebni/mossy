@@ -39,6 +39,8 @@ class Discovery {
     this.identificationScore = 0.95,
   });
 
+  String get genus => scientificName.trim().split(RegExp(r'\s+')).first;
+
   bool get hasLocation => latitude != null && longitude != null;
 
   String get confidenceLabel {
@@ -100,7 +102,9 @@ class Discovery {
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       personalNotes: json['personal_notes'] as String?,
-      aiContent: json['ai_content'] != null
+      aiContent: json['ai_content'] != null &&
+              json['ai_content'] is Map &&
+              (json['ai_content'] as Map).isNotEmpty
           ? AiContent.fromJson(json['ai_content'] as Map<String, dynamic>)
           : null,
       identificationScore: (json['identification_score'] as num?)?.toDouble() ?? 0.95,
@@ -120,7 +124,7 @@ class Discovery {
         'latitude': latitude,
         'longitude': longitude,
         'personal_notes': personalNotes,
-        'ai_content': aiContent?.toJson(),
+        'ai_content': aiContent?.toJson() ?? {},
         'identification_score': identificationScore,
       };
 }

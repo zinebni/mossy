@@ -14,17 +14,30 @@ class DiscoveryMapScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final discoveriesAsync = ref.watch(discoveriesProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.cream,
-      appBar: AppBar(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
         backgroundColor: AppColors.cream,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.darkGreen),
-          onPressed: () => context.pop(),
+        appBar: AppBar(
+          backgroundColor: AppColors.cream,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: AppColors.darkGreen),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+          ),
+          title: Text('Discovery Map', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppColors.darkGreen)),
+          elevation: 0,
         ),
-        title: Text('Discovery Map', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppColors.darkGreen)),
-        elevation: 0,
-      ),
       body: discoveriesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.sageGreen)),
         error: (e, _) => Center(child: Text('$e')),
@@ -77,7 +90,8 @@ class DiscoveryMapScreen extends ConsumerWidget {
           );
         },
       ),
-    );
+    ),
+  );
   }
 
   void _showDiscoveryInfo(BuildContext context, Discovery d) {

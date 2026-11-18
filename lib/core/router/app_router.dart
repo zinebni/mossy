@@ -64,22 +64,30 @@ class _MainScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: shell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: shell.currentIndex,
-        onDestinationSelected: (i) => shell.goBranch(i, initialLocation: i == shell.currentIndex),
-        backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFFD9E8CF),
-        height: 68,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.search_outlined), selectedIcon: Icon(Icons.search_rounded), label: 'Explore'),
-          NavigationDestination(icon: Icon(Icons.collections_bookmark_outlined), selectedIcon: Icon(Icons.collections_bookmark_rounded), label: 'Collection'),
-          NavigationDestination(icon: Icon(Icons.explore_outlined), selectedIcon: Icon(Icons.explore_rounded), label: 'Adventures'),
-          NavigationDestination(icon: Icon(Icons.eco_outlined), selectedIcon: Icon(Icons.eco_rounded), label: 'Garden'),
-        ],
+    return PopScope(
+      canPop: shell.currentIndex == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && shell.currentIndex != 0) {
+          shell.goBranch(0);
+        }
+      },
+      child: Scaffold(
+        body: shell,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: shell.currentIndex,
+          onDestinationSelected: (i) => shell.goBranch(i, initialLocation: i == shell.currentIndex),
+          backgroundColor: Colors.white,
+          indicatorColor: const Color(0xFFD9E8CF),
+          height: 68,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Home'),
+            NavigationDestination(icon: Icon(Icons.search_outlined), selectedIcon: Icon(Icons.search_rounded), label: 'Explore'),
+            NavigationDestination(icon: Icon(Icons.collections_bookmark_outlined), selectedIcon: Icon(Icons.collections_bookmark_rounded), label: 'Collection'),
+            NavigationDestination(icon: Icon(Icons.explore_outlined), selectedIcon: Icon(Icons.explore_rounded), label: 'Adventures'),
+            NavigationDestination(icon: Icon(Icons.eco_outlined), selectedIcon: Icon(Icons.eco_rounded), label: 'Garden'),
+          ],
+        ),
       ),
     );
   }

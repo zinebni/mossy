@@ -173,7 +173,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.person_outline_rounded, color: AppColors.darkGreen),
             tooltip: 'Profile',
-            onPressed: () => context.go(AppRouter.profilePath),
+            onPressed: () => context.push(AppRouter.profilePath),
           ),
           const SizedBox(width: 12),
         ],
@@ -789,7 +789,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _buildSectionHeader(
           title: 'Explorer Badges',
           actionLabel: 'View all',
-          onTap: () => context.go(AppRouter.profilePath),
+          onTap: () => context.push(AppRouter.profilePath),
         ),
         const SizedBox(height: 12),
         achievementsAsync.when(
@@ -801,7 +801,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             final total = list.length;
 
             return MossyCard(
-              onTap: () => context.go(AppRouter.profilePath),
+              onTap: () => context.push(AppRouter.profilePath),
               child: Row(
                 children: [
                   Container(
@@ -855,7 +855,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       children: [
         Expanded(
           child: GestureDetector(
-            onTap: () => context.go(AppRouter.mapPath),
+            onTap: () => context.push(AppRouter.mapPath),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               decoration: BoxDecoration(
@@ -892,7 +892,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         const SizedBox(width: 12),
         Expanded(
           child: GestureDetector(
-            onTap: () => context.go(AppRouter.settingsPath),
+            onTap: () => context.push(AppRouter.settingsPath),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               decoration: BoxDecoration(

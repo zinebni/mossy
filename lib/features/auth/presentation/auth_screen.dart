@@ -246,21 +246,28 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     final authState = ref.watch(authProvider);
     final isSignUp = _tabController.index == 1;
 
-    return Scaffold(
-      backgroundColor: AppColors.creamBackground,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.darkGreen, size: 20),
-                onPressed: () {
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).pop();
-                  }
-                },
-              )
-            : null,
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.creamBackground,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.darkGreen, size: 20),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+          ),
         actions: [
           TextButton.icon(
             key: const Key('auth_guest_button'),
@@ -428,7 +435,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildSignInForm(AuthState authState) {

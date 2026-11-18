@@ -18,24 +18,42 @@ class ProfileScreen extends ConsumerWidget {
     final discoveryStats = ref.watch(discoveryStatsProvider);
     final authState = ref.watch(authProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.cream,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: profileAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator(color: AppColors.sageGreen)),
-            error: (e, _) => Center(child: Text('$e')),
-            data: (profile) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Text('Profile', style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800, color: AppColors.darkGreen)),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.settings_outlined, color: AppColors.secondaryText),
-                  onPressed: () => context.go('/settings'),
-                ),
-              ]),
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.cream,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: profileAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.sageGreen)),
+              error: (e, _) => Center(child: Text('$e')),
+              data: (profile) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded, color: AppColors.darkGreen),
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/home');
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  Text('Profile', style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800, color: AppColors.darkGreen)),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.settings_outlined, color: AppColors.secondaryText),
+                    onPressed: () => context.push('/settings'),
+                  ),
+                ]),
               const SizedBox(height: 20),
               // Avatar + info
               MossyCard(
@@ -146,13 +164,14 @@ class ProfileScreen extends ConsumerWidget {
                   ])),
                   const Icon(Icons.chevron_right_rounded, color: AppColors.mutedText),
                 ]),
-                onTap: () => context.go('/map'),
+                onTap: () => context.push('/map'),
               ).animate().fadeIn(delay: 300.ms),
             ]),
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
