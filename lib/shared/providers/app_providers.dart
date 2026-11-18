@@ -438,33 +438,42 @@ final gardenStateProvider =
 class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
   final PointsService _pointsService;
   final Ref _ref;
+  final UserProfile? _authUser;
 
-  UserProfileNotifier(this._pointsService, this._ref)
-      : super(const AsyncValue.loading()) {
-    loadProfile();
+  UserProfileNotifier(this._pointsService, this._ref, [this._authUser])
+      : super(_authUser != null ? AsyncValue.data(_authUser) : const AsyncValue.loading()) {
+    if (_authUser != null) {
+      loadProfile();
+    }
   }
 
   Future<void> loadProfile() async {
-    final authState = _ref.read(authProvider);
-    final user = authState.user;
+    final user = _authUser ?? _ref.read(authProvider).user;
     if (user == null) {
-      state = const AsyncValue.loading();
+      if (mounted) state = const AsyncValue.loading();
       return;
     }
+    // Eagerly set current user data so UI has instant response without blank/frozen state
+    if (mounted) state = AsyncValue.data(user);
+
     try {
       final total = await _pointsService.getTotalPoints(user.id);
       final updated = user.copyWith(
         totalPoints: total > 0 ? total : user.totalPoints,
         explorerLevel: UserProfile.calculateLevel(total > 0 ? total : user.totalPoints),
       );
-      state = AsyncValue.data(updated);
+      if (mounted) {
+        state = AsyncValue.data(updated);
+      }
     } catch (_) {
-      state = AsyncValue.data(user);
+      if (mounted) {
+        state = AsyncValue.data(user);
+      }
     }
   }
 
   Future<void> addPoints(int points, String reason, {String? referenceId}) async {
-    final current = state.value;
+    final current = state.value ?? _authUser ?? _ref.read(authProvider).user;
     if (current == null) return;
     try {
       await _pointsService.awardPoints(
@@ -480,7 +489,9 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
         explorerLevel: UserProfile.calculateLevel(newTotal),
       );
 
-      state = AsyncValue.data(updated);
+      if (mounted) {
+        state = AsyncValue.data(updated);
+      }
       _ref.read(authProvider.notifier).addPoints(points);
 
       // Check garden progression after point award
@@ -505,13 +516,15 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
   }
 
   Future<void> updateProfile({String? username, String? avatarUrl}) async {
-    final current = state.value;
+    final current = state.value ?? _authUser ?? _ref.read(authProvider).user;
     if (current == null) return;
     final updated = current.copyWith(
       username: username,
       avatarUrl: avatarUrl,
     );
-    state = AsyncValue.data(updated);
+    if (mounted) {
+      state = AsyncValue.data(updated);
+    }
     await _ref.read(authProvider.notifier).updateProfile(
       username: username,
       avatarUrl: avatarUrl,
@@ -519,11 +532,12 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
   }
 }
 
-/// Global provider for user profile.
+/// Global provider for user profile. Watches both points service and active auth state.
 final userProfileProvider =
     StateNotifierProvider<UserProfileNotifier, AsyncValue<UserProfile>>((ref) {
   final pointsService = ref.watch(pointsServiceProvider);
-  return UserProfileNotifier(pointsService, ref);
+  final auth = ref.watch(authProvider);
+  return UserProfileNotifier(pointsService, ref, auth.user);
 });
 
 // ============================================================================
