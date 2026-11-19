@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mossy/shared/models/discovery.dart';
 import 'package:mossy/shared/models/discovery_rarity.dart';
@@ -83,7 +83,7 @@ void main() {
       expect(old.rarity, isNotNull);
     });
 
-    testWidgets('celebration plays ~1.8s and removes itself', (tester) async {
+    testWidgets('celebration plays ~2.4s and removes itself', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Builder(
           builder: (ctx) => Scaffold(
@@ -97,7 +97,7 @@ void main() {
       await tester.tap(find.text('go'));
       await tester.pump();
       expect(find.byType(RarityCelebration), findsOneWidget);
-      await tester.pump(const Duration(milliseconds: 1900));
+      await tester.pump(const Duration(milliseconds: 2500));
       await tester.pump();
       expect(find.byType(RarityCelebration), findsNothing);
     });

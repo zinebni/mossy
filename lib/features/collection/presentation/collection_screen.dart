@@ -1211,6 +1211,35 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                             color: _d.rarity.color,
                           ),
                         ),
+                        if (_d.rarity.isCelebratory) ...[
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => RarityCelebration.show(context, _d.rarity, isFr: isFr),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: _d.rarity.color.withAlpha(150)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('🎉', style: TextStyle(fontSize: 13)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    isFr ? 'Rejouer' : 'Replay',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: _d.rarity.color,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
