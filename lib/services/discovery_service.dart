@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../shared/models/discovery.dart';
@@ -320,7 +320,7 @@ class SupabaseDiscoveryService implements DiscoveryService {
     // 2. Sync to Supabase PostgreSQL when user is authenticated with a valid UUID
     try {
       final currentUser = _supabaseService.auth!.currentUser!;
-      final payload = discovery.copyWith(userId: currentUser.id).toJson();
+      final payload = discovery.copyWith(userId: currentUser.id).toJson(includeRarity: false);
 
       final response = await _supabaseService
           .from('discoveries')!
@@ -347,7 +347,7 @@ class SupabaseDiscoveryService implements DiscoveryService {
 
     try {
       final currentUser = _supabaseService.auth!.currentUser!;
-      final payload = discovery.copyWith(userId: currentUser.id).toJson();
+      final payload = discovery.copyWith(userId: currentUser.id).toJson(includeRarity: false);
 
       final response = await _supabaseService
           .from('discoveries')!
@@ -411,3 +411,4 @@ class SupabaseDiscoveryService implements DiscoveryService {
     return families;
   }
 }
+

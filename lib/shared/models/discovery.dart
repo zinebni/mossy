@@ -1,4 +1,5 @@
-import 'ai_content.dart';
+﻿import 'ai_content.dart';
+import 'discovery_rarity.dart';
 
 /// Represents a saved plant discovery in the user's collection.
 class Discovery {
@@ -16,6 +17,12 @@ class Discovery {
   final AiContent? aiContent;
   final double identificationScore; // 0.0 - 1.0
   final DateTime createdAt;
+  final DiscoveryRarity? _rarity;
+
+  /// Rarity tier. Falls back to the deterministic engine for records saved
+  /// before the rarity system existed (null-safe).
+  DiscoveryRarity get rarity =>
+      _rarity ?? RarityEngine.assign(scientificName: scientificName, family: family);
 
   // Convenience aliases for compatibility
   String get imageUrl => imagePath;
@@ -37,7 +44,8 @@ class Discovery {
     this.personalNotes,
     this.aiContent,
     this.identificationScore = 0.95,
-  });
+    DiscoveryRarity? rarity,
+  }) : _rarity = rarity;
 
   String get genus => scientificName.trim().split(RegExp(r'\s+')).first;
 
@@ -69,6 +77,7 @@ class Discovery {
     AiContent? aiContent,
     double? identificationScore,
     DateTime? createdAt,
+    DiscoveryRarity? rarity,
   }) {
     return Discovery(
       id: id ?? this.id,
@@ -85,6 +94,7 @@ class Discovery {
       aiContent: aiContent ?? this.aiContent,
       identificationScore: identificationScore ?? this.identificationScore,
       createdAt: createdAt ?? this.createdAt,
+      rarity: rarity ?? _rarity,
     );
   }
 
@@ -108,10 +118,13 @@ class Discovery {
           ? AiContent.fromJson(json['ai_content'] as Map<String, dynamic>)
           : null,
       identificationScore: (json['identification_score'] as num?)?.toDouble() ?? 0.95,
+      rarity: DiscoveryRarity.tryParse(json['rarity']),
     );
   }
 
-  Map<String, dynamic> toJson() => {
+  /// [includeRarity] is false for Supabase payloads (rarity is deterministic and
+  /// recomputed on read, so no remote schema change is required).
+  Map<String, dynamic> toJson({bool includeRarity = true}) => {
         'id': id,
         'user_id': userId,
         'common_name': commonName,
@@ -126,5 +139,7 @@ class Discovery {
         'personal_notes': personalNotes,
         'ai_content': aiContent?.toJson() ?? {},
         'identification_score': identificationScore,
+        if (includeRarity) 'rarity': rarity.name,
       };
 }
+

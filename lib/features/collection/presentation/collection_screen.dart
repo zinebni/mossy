@@ -12,6 +12,7 @@ import '../../../core/widgets/mossy_card.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/image_storage_service.dart';
 import '../../../shared/models/discovery.dart';
+import '../../../shared/widgets/rarity_widgets.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/auth_provider.dart';
 
@@ -538,13 +539,14 @@ class _GridCard extends ConsumerWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
+          border: RarityFrame.border(discovery.rarity),
+          boxShadow: RarityFrame.shadows(discovery.rarity, [
             BoxShadow(
               color: Colors.black.withAlpha(12),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
-          ],
+          ]),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,6 +587,17 @@ class _GridCard extends ConsumerWidget {
                       ),
                     ),
                   ),
+                  // Rarity badge (hidden for common finds to keep things clean)
+                  if (discovery.rarity.showsBadge)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: RarityBadge(
+                        rarity: discovery.rarity,
+                        isFr: Localizations.localeOf(context).languageCode == 'fr',
+                        compact: true,
+                      ),
+                    ),
                   // Confidence tag
                   Positioned(
                     bottom: 6,
@@ -678,13 +691,14 @@ class _ListCard extends ConsumerWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
+          border: RarityFrame.border(discovery.rarity),
+          boxShadow: RarityFrame.shadows(discovery.rarity, [
             BoxShadow(
               color: Colors.black.withAlpha(10),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
-          ],
+          ]),
         ),
         child: Row(
           children: [
@@ -743,6 +757,14 @@ class _ListCard extends ConsumerWidget {
                             style: const TextStyle(fontSize: 10, color: AppColors.darkGreen, fontWeight: FontWeight.w700),
                           ),
                         ),
+                        if (discovery.rarity.showsBadge) ...[
+                          const SizedBox(width: 6),
+                          RarityBadge(
+                            rarity: discovery.rarity,
+                            isFr: Localizations.localeOf(context).languageCode == 'fr',
+                            compact: true,
+                          ),
+                        ],
                         const SizedBox(width: 8),
                         Text(
                           '$confidencePct% match',
@@ -1165,6 +1187,34 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
             padding: const EdgeInsets.all(20),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                // Rarity tier (tap a rare+ badge to replay the sparkles)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        RarityBadge(
+                          rarity: _d.rarity,
+                          isFr: isFr,
+                          onTap: _d.rarity.isCelebratory
+                              ? () => RarityCelebration.show(context, _d.rarity, isFr: isFr)
+                              : null,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '+${_d.rarity.totalPoints} XP',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _d.rarity.color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 // Title and common name
                 Text(
                   _d.commonName.isNotEmpty ? _d.commonName : _d.scientificName,

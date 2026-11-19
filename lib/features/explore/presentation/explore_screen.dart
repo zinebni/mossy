@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +12,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../../services/quest_service.dart';
 import '../../../services/supabase_service.dart';
 import '../../../shared/models/discovery.dart';
+import '../../../shared/models/discovery_rarity.dart';
+import '../../../shared/widgets/rarity_widgets.dart';
 import '../../../shared/models/identification_result.dart';
 import '../../../shared/models/plant_candidate.dart';
 import '../../../shared/providers/app_providers.dart';
@@ -807,11 +809,21 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
         createdAt: DateTime.now(),
         identificationScore: candidate.score,
         aiContent: aiContent,
+        rarity: RarityEngine.assign(
+          scientificName: candidate.scientificName,
+          family: candidate.family,
+        ),
       );
+      final rarity = discovery.rarity;
+      final earnedPoints = rarity.totalPoints;
 
       // 5. Save to journal and award points
       await discoveryNotifier.addDiscovery(discovery);
-      await ref.read(userProfileProvider.notifier).addPoints(15, 'plant_identified');
+      await ref.read(userProfileProvider.notifier).addPoints(
+        earnedPoints,
+        rarity == DiscoveryRarity.common ? 'plant_identified' : 'plant_identified_${rarity.name}',
+        referenceId: discoveryId,
+      );
 
       final activeQuest = ref.read(activeQuestProvider);
       final isQuestMatch = activeQuest != null &&
@@ -834,16 +846,18 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
         _isSaved = true;
       });
 
+      RarityCelebration.show(context, rarity, isFr: isFr);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             isQuestMatch
                 ? (isFr
-                    ? '🎉 Plante enregistrée & Défi validé ! +${activeQuest.xpReward + 15} points'
-                    : '🎉 Plant saved & Challenge completed! +${activeQuest.xpReward + 15} points')
+                    ? '🎉 Plante enregistrée & Défi validé ! +${activeQuest.xpReward + earnedPoints} points'
+                    : '🎉 Plant saved & Challenge completed! +${activeQuest.xpReward + earnedPoints} points')
                 : (isFr
-                    ? '🌿 Découverte enregistrée dans votre Journal ! +15 points'
-                    : '🌿 Discovery saved to your Journal! +15 points'),
+                    ? '🌿 Découverte enregistrée dans votre Journal ! +$earnedPoints points'
+                    : '🌿 Discovery saved to your Journal! +$earnedPoints points'),
           ),
           backgroundColor: AppColors.sageGreen,
           duration: const Duration(seconds: 4),
@@ -1284,3 +1298,4 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
     );
   }
 }
+
