@@ -21,8 +21,12 @@ class Discovery {
 
   /// Rarity tier. Falls back to the deterministic engine for records saved
   /// before the rarity system existed (null-safe).
+  /// Order: stored tier -> Gemini tier saved inside ai_content -> legacy
+  /// deterministic rule. Stable for a given record across views and re-fetches.
   DiscoveryRarity get rarity =>
-      _rarity ?? RarityEngine.assign(scientificName: scientificName, family: family);
+      _rarity ??
+      aiContent?.rarity ??
+      RarityEngine.assign(scientificName: scientificName, family: family);
 
   // Convenience aliases for compatibility
   String get imageUrl => imagePath;

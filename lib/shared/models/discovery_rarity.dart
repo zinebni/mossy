@@ -8,11 +8,30 @@ enum DiscoveryRarity {
   epic,
   legendary;
 
-  /// Safe parsing: unknown / null values (e.g. old records) return null.
+  /// Tolerant parsing for stored values and AI output: ignores casing, accents,
+  /// punctuation and surrounding text noise; understands French labels.
+  /// Anything unrecognised (or null) returns null — never throws.
   static DiscoveryRarity? tryParse(dynamic value) {
     if (value is! String) return null;
-    for (final r in DiscoveryRarity.values) {
-      if (r.name == value.trim().toLowerCase()) return r;
+    var s = value.toLowerCase();
+    const accents = {'é': 'e', 'è': 'e', 'ê': 'e', 'à': 'a', 'â': 'a', 'î': 'i', 'ô': 'o', 'û': 'u', 'ù': 'u', 'ç': 'c'};
+    accents.forEach((k, v) => s = s.replaceAll(k, v));
+    s = s.replaceAll(RegExp(r'[^a-z ]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    switch (s) {
+      case 'common':
+      case 'commun':
+        return DiscoveryRarity.common;
+      case 'uncommon':
+      case 'peu commun':
+        return DiscoveryRarity.uncommon;
+      case 'rare':
+        return DiscoveryRarity.rare;
+      case 'epic':
+      case 'epique':
+        return DiscoveryRarity.epic;
+      case 'legendary':
+      case 'legendaire':
+        return DiscoveryRarity.legendary;
     }
     return null;
   }
@@ -128,6 +147,15 @@ class RarityEngine {
     'magnoliaceae',
     'paeoniaceae',
   };
+
+  /// Simple, reliable tier for NEW discoveries when Gemini fails, times out or
+  /// returns an invalid value: everyday species are common, everything else
+  /// uncommon. Never rare+, so a failed lookup can't hand out surprise bonuses.
+  static DiscoveryRarity safeFallback({required String scientificName}) {
+    return _everydaySpecies.contains(scientificName.trim().toLowerCase())
+        ? DiscoveryRarity.common
+        : DiscoveryRarity.uncommon;
+  }
 
   /// FNV-1a: stable across runs/platforms (unlike String.hashCode).
   static int _fnv(String s) {

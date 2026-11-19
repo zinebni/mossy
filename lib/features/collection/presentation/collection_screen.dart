@@ -1215,6 +1215,19 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                     ),
                   ),
                 ),
+                // Why this rarity (from Gemini, kid-friendly)
+                if (_d.aiContent?.rarityReason != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      _d.aiContent!.rarityReason!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        color: _d.rarity.color,
+                      ),
+                    ),
+                  ),
                 // Title and common name
                 Text(
                   _d.commonName.isNotEmpty ? _d.commonName : _d.scientificName,

@@ -809,10 +809,9 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
         createdAt: DateTime.now(),
         identificationScore: candidate.score,
         aiContent: aiContent,
-        rarity: RarityEngine.assign(
-          scientificName: candidate.scientificName,
-          family: candidate.family,
-        ),
+        // Gemini decides the tier; invalid/missing -> simple safe fallback.
+        rarity: aiContent.rarity ??
+            RarityEngine.safeFallback(scientificName: candidate.scientificName),
       );
       final rarity = discovery.rarity;
       final earnedPoints = rarity.totalPoints;

@@ -46,6 +46,43 @@ void main() {
       expect(Discovery.fromJson(d.toJson()).rarity, DiscoveryRarity.epic);
     });
 
+    test('Gemini rarity parsing is tolerant and never throws', () {
+      expect(DiscoveryRarity.tryParse(' LEGENDARY '), DiscoveryRarity.legendary);
+      expect(DiscoveryRarity.tryParse('Rare.'), DiscoveryRarity.rare);
+      expect(DiscoveryRarity.tryParse('"epic"'), DiscoveryRarity.epic);
+      expect(DiscoveryRarity.tryParse('Épique'), DiscoveryRarity.epic);
+      expect(DiscoveryRarity.tryParse('Peu commun'), DiscoveryRarity.uncommon);
+      expect(DiscoveryRarity.tryParse('super duper rare!!'), isNull);
+      expect(DiscoveryRarity.tryParse(''), isNull);
+      expect(DiscoveryRarity.tryParse(null), isNull);
+      expect(DiscoveryRarity.tryParse(42), isNull);
+    });
+
+    test('safe fallback is only common or uncommon', () {
+      expect(RarityEngine.safeFallback(scientificName: 'Bellis perennis'), DiscoveryRarity.common);
+      expect(RarityEngine.safeFallback(scientificName: 'Unknown plantus'), DiscoveryRarity.uncommon);
+    });
+
+    test('rarity precedence: stored > ai_content > legacy rule; reason round-trips', () {
+      final ai = {
+        'introduction': 'i',
+        'description': 'd',
+        'rarity': 'epic',
+        'rarity_reason': 'Only grows on high cliffs!',
+      };
+      final fromAi = _d(extra: {'ai_content': ai});
+      expect(fromAi.rarity, DiscoveryRarity.epic);
+      expect(fromAi.aiContent!.rarityReason, 'Only grows on high cliffs!');
+      final stored = _d(extra: {'ai_content': ai, 'rarity': 'rare'});
+      expect(stored.rarity, DiscoveryRarity.rare);
+      // Same value on repeated reads/serialisation.
+      expect(Discovery.fromJson(fromAi.toJson()).rarity, DiscoveryRarity.epic);
+      // Old ai_content without rarity keys is still valid.
+      final old = _d(extra: {'ai_content': {'introduction': 'i', 'description': 'd'}});
+      expect(old.aiContent!.rarity, isNull);
+      expect(old.rarity, isNotNull);
+    });
+
     testWidgets('celebration plays ~1.8s and removes itself', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Builder(

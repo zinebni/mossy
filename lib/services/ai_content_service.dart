@@ -2,6 +2,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../shared/models/ai_content.dart';
+import '../shared/models/discovery_rarity.dart';
 
 /// Abstract interface for generating AI educational content and nature insights.
 abstract class AiContentService {
@@ -74,8 +75,17 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this EX
     "Something a kid can actually DO outside: smell it, count petals, spot bugs on it, compare leaf shapes — concrete and hands-on",
     "A second fun tip: how to find it in a garden or park, or a simple nature activity to try with it"
   ],
-  "safetyNote": "1-2 friendly sentences. Is it safe to touch? Should you check with a grown-up before picking or tasting? Keep it warm and not scary."
+  "safetyNote": "1-2 friendly sentences. Is it safe to touch? Should you check with a grown-up before picking or tasting? Keep it warm and not scary.",
+  "rarity": "EXACTLY one lowercase English word from: common, uncommon, rare, epic, legendary (keep this value in English even when writing in French)",
+  "rarityReason": "ONE short, kid-friendly sentence explaining why it has that rarity (where you can find it and how often). Written in the response language."
 }
+
+RARITY GUIDE (be honest and conservative - most plants are common or uncommon):
+- common: seen almost every day on a walk, in lawns, gardens or parks.
+- uncommon: fairly widespread but not in every garden or park; a nice find.
+- rare: lives in specific habitats or regions; you have to go looking for it.
+- epic: scarce, protected, or only grows in special places; a very special find.
+- legendary: extremely rare, endangered, or almost never seen in the wild (use very sparingly, well under 2% of plants).
 ''';
 
     try {
@@ -95,7 +105,7 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this EX
               ],
               'generationConfig': {
                 'temperature': 0.7,
-                'maxOutputTokens': 1024,
+                'maxOutputTokens': 1500,
                 'responseMimeType': 'application/json',
               },
             }),
@@ -158,12 +168,22 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this EX
         plantJson = jsonDecode(cleaned) as Map<String, dynamic>;
       }
 
+      final reasonRaw = plantJson['rarityReason'] ?? plantJson['rarity_reason'];
+      final reason = reasonRaw is String ? reasonRaw.trim() : '';
+      // Tolerant parse: bad casing/text -> null, handled by the caller's safe fallback.
+      final rarity = DiscoveryRarity.tryParse(plantJson['rarity']);
+      if (rarity == null) {
+        debugPrint('[Gemini] Missing/invalid rarity "${plantJson['rarity']}" - caller will use safe fallback.');
+      }
+
       return AiContent(
         introduction: plantJson['introduction'] as String? ?? '',
         description: plantJson['description'] as String? ?? '',
         funFacts: _parseStringList(plantJson['funFacts']),
         observationTips: _parseStringList(plantJson['observationTips']),
         safetyNote: plantJson['safetyNote'] as String?,
+        rarity: rarity,
+        rarityReason: rarity != null && reason.isNotEmpty ? reason : null,
       );
     } catch (e) {
       debugPrint('[Gemini] Failed to parse response: $e — using structured fallback');
@@ -528,3 +548,4 @@ class DemoAiContentService implements AiContentService {
     );
   }
 }
+
