@@ -104,7 +104,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 icon: Icons.account_circle_outlined,
                 title: isFr ? 'Changer de compte' : 'Switch Account',
                 subtitle: isFr ? 'Connecté en tant que ${profile?.username ?? 'Explorer'}' : 'Currently signed in as ${profile?.username ?? 'Explorer'}',
-                onTap: () => context.push('/auth'),
+                onTap: () => _confirmSwitchAccount(context, ref),
               ),
               _Divider(),
               _ListTile(
@@ -166,6 +166,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
     );
     if (confirmed == true && context.mounted) {
+      await ref.read(authProvider.notifier).signOut();
+      if (context.mounted) context.go('/auth');
+    }
+  }
+
+  Future<void> _confirmSwitchAccount(BuildContext context, WidgetRef ref) async {
+    final isFr = ref.read(localeProvider).languageCode == 'fr';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(isFr ? 'Changer de compte' : 'Switch Account'),
+        content: Text(
+          isFr
+              ? 'Vous serez déconnecté du compte actuel. Vos données sont sauvegardées.'
+              : 'You will be signed out of the current account. Your data is saved.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: Text(isFr ? 'Annuler' : 'Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            child: Text(
+              isFr ? 'Changer' : 'Switch',
+              style: const TextStyle(color: AppColors.sageGreen, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      // Sign out current user (purges local state), then go to auth for new login
       await ref.read(authProvider.notifier).signOut();
       if (context.mounted) context.go('/auth');
     }

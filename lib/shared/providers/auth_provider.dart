@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import '../../services/discovery_service.dart';
+import '../../services/points_service.dart';
 import '../../services/quest_service.dart';
 import '../../services/supabase_service.dart';
 import '../models/user_profile.dart';
@@ -176,6 +177,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> _loadUserProfile(String userId) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
+      // Read the locally persisted session first so we can protect accumulated points.
+      int localPoints = 0;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final sessionJson = prefs.getString(_sessionKey);
+        if (sessionJson != null && sessionJson.isNotEmpty) {
+          final Map<String, dynamic> sessionData = jsonDecode(sessionJson);
+          if (sessionData['id'] == userId) {
+            localPoints = (sessionData['total_points'] as int?) ?? 0;
+          }
+        }
+      } catch (_) {}
+
       final response = await _supabaseService
           .from('profiles')
           ?.select()
@@ -183,18 +197,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
           .maybeSingle();
 
       if (response != null) {
-        final profile = UserProfile.fromJson(response);
+        final dbProfile = UserProfile.fromJson(response);
+        // Use the MAXIMUM of DB points and locally stored points to prevent reset.
+        final mergedPoints = dbProfile.totalPoints > localPoints ? dbProfile.totalPoints : localPoints;
+        final profile = dbProfile.copyWith(
+          totalPoints: mergedPoints,
+          explorerLevel: UserProfile.calculateLevel(mergedPoints),
+        );
         await _persistSession(profile);
         if (mounted) {
           state = state.copyWith(user: profile, isLoading: false, isDemoMode: false);
         }
+        // If local points are ahead of DB, sync them back to Supabase.
+        if (localPoints > dbProfile.totalPoints) {
+          _supabaseService.from('profiles')?.update({
+            'total_points': mergedPoints,
+            'explorer_level': UserProfile.calculateLevel(mergedPoints),
+          }).eq('id', userId).then((_) {}).catchError((e) {
+            debugPrint('[Mossy] Failed to sync local points to Supabase: $e');
+          });
+        }
       } else {
-        // Fallback or create base profile
+        // No DB row yet — create a base profile, preserving any locally accumulated points.
         final newProfile = UserProfile(
           id: userId,
           username: _supabaseService.auth?.currentUser?.email?.split('@').first ?? 'Explorer',
-          totalPoints: 0,
-          explorerLevel: 1,
+          totalPoints: localPoints,
+          explorerLevel: UserProfile.calculateLevel(localPoints),
           createdAt: DateTime.now(),
         );
         await _persistSession(newProfile);
@@ -204,10 +233,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } catch (e) {
       debugPrint('[Mossy] Error loading user profile: $e');
+      // On network error, restore from persisted session rather than showing 0 XP.
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final sessionJson = prefs.getString(_sessionKey);
+        if (sessionJson != null && sessionJson.isNotEmpty) {
+          final Map<String, dynamic> data = jsonDecode(sessionJson);
+          if (data['id'] == userId) {
+            final restoredProfile = UserProfile.fromJson(data);
+            if (mounted) {
+              state = state.copyWith(user: restoredProfile, isLoading: false);
+            }
+            return;
+          }
+        }
+      } catch (_) {}
       if (mounted) {
         state = state.copyWith(
           isLoading: false,
-          errorMessage: 'Failed to load profile: $e',
+          errorMessage: 'Failed to load profile. Using cached data.',
         );
       }
     }
@@ -501,6 +545,8 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   notifier.onPurgeUserData = (userId) async {
     if (userId != null && userId.isNotEmpty) {
       await LocalDiscoveryStore.clearUser(userId);
+      // Clear persisted points ledger for this user
+      await DemoPointsService().clearUser(userId);
     }
     await LocalDiscoveryStore.clearAll();
     await LocalQuestService().clearAll();

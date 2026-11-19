@@ -1244,21 +1244,21 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                 // ─── 📖 Generative Botanical Lore ──────────────────────────
                 if (_d.aiContent != null) ...[
                   if (_d.aiContent!.introduction.isNotEmpty)
-                    _Section(isFr ? 'Vue d\'ensemble botanique' : 'Botanical Overview', _d.aiContent!.introduction),
+                    _Section(isFr ? '✨ La magie de cette plante' : '✨ Meet This Plant', _d.aiContent!.introduction),
 
                   if (_d.aiContent!.description.isNotEmpty)
-                    _Section(isFr ? 'Morphologie & Habitat' : 'Morphology & Habitat', _d.aiContent!.description),
+                    _Section(isFr ? '🌍 Où la trouver & ce qu\'elle fait' : '🌍 Where It Lives & What It Does', _d.aiContent!.description),
 
                   if (_d.funFacts.isNotEmpty)
                     _BulletSection(
-                      isFr ? 'Faits fascinants' : 'Fascinating Facts',
+                      isFr ? '🤩 Le sais-tu ?' : '🤩 Cool Facts',
                       _d.funFacts,
                       Icons.lightbulb_outline_rounded,
                     ),
 
                   if (_d.observationTips.isNotEmpty)
                     _BulletSection(
-                      isFr ? 'Conseils d\'observation sur le terrain' : 'Field Observation Tips',
+                      isFr ? '🔍 Comment l\'observer & la cultiver' : '🔍 How to Spot or Grow It',
                       _d.observationTips,
                       Icons.visibility_outlined,
                     ),
@@ -1282,7 +1282,7 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  isFr ? 'Note de sécurité' : 'Safety Note',
+                                  isFr ? '🛡️ Conseil Explorateur' : '🛡️ Safe Explorer Tip',
                                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
                                 ),
                                 const SizedBox(height: 2),

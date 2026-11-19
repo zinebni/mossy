@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../shared/models/ai_content.dart';
@@ -45,29 +45,36 @@ class GeminiAiContentService implements AiContentService {
 
     final isFrench = language.startsWith('fr');
     final langNote = isFrench
-        ? 'RÈGLE IMPÉRATIVE DE LANGUE : Tu DOIS rédiger l\'intégralité absolue de ta réponse en FRANÇAIS (France). Tous les champs textuels (introduction, description, funFacts, observationTips, safetyNote) DOIVENT impérativement être écrits en français soigné, éducatif et poétique.'
-        : 'MANDATORY LANGUAGE RULE: You MUST write your entire response in English. All text fields (introduction, description, funFacts, observationTips, safetyNote) MUST be written in clear, engaging English.';
+        ? 'RÈGLE IMPÉRATIVE DE LANGUE : Tu DOIS rédiger TOUTE ta réponse en FRANÇAIS, avec un ton chaleureux, ludique et accessible pour les enfants et les débutants. Explique les termes botaniques en langage courant dès qu\'ils apparaissent. Sois enthousiaste et fais ressentir la magie de la nature !'
+        : 'MANDATORY LANGUAGE RULE: You MUST write your ENTIRE response in English. Use a warm, fun, friendly tone — like an enthusiastic nature guide talking to curious kids and beginners. If you use a botanical term, explain it in simple everyday words right away.';
 
     final prompt = '''
-You are an enthusiastic botanical educator writing for a nature discovery app called Mossy.
+You are Mossy, a super friendly and enthusiastic nature guide for the Mossy plant discovery app.
+Your job is to make plant discovery feel magical, fun, and exciting — like a nature adventure — for kids, families, and everyday explorers.
 $langNote
 
-For the plant "$commonName" (scientific name: $scientificName, family: $family), provide structured botanical wisdom.
+Write about the plant "$commonName" (scientific name: $scientificName, family: $family).
 
-Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this exact structure:
+TONE RULES (follow these strictly):
+- Write like a kind, fun teacher talking to a curious 10-year-old, NOT like a science textbook.
+- Use simple, vivid words. If you must use a scientific term, explain it right away in plain language.
+- Be enthusiastic! Use gentle exclamations and imagery. Keep sentences short and punchy.
+- Always frame edible/DIY ideas safely (e.g., "ask a grown-up first!"). No medical claims.
+
+Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this EXACT structure:
 {
-  "introduction": "A warm, engaging 2-sentence introduction to this plant",
-  "description": "A detailed botanical description in 3-4 sentences covering morphology, habitat, and ecology",
+  "introduction": "2 sentences: What is the coolest, most exciting thing about this plant? Hook the reader! Lead with wonder.",
+  "description": "2-3 sentences: Where does it live in the world? What does it look like? What does it do for nature (feed bees, make fruit, smell amazing)? Keep it visual and vivid.",
   "funFacts": [
-    "First fascinating fact about this plant",
-    "Second fascinating fact",
-    "Third fascinating fact"
+    "A surprising delight kids would love — pollinators, records, folklore, or quirky behaviour",
+    "A fun real-life use — tea, decoration, natural scent, herbal tradition — always framed safely (ask a grown-up!)",
+    "A wow nature fact: seed travel, age, speed of growth, or an amazing animal relationship"
   ],
   "observationTips": [
-    "First practical field observation tip for naturalists",
-    "Second observation tip"
+    "Something a kid can actually DO outside: smell it, count petals, spot bugs on it, compare leaf shapes — concrete and hands-on",
+    "A second fun tip: how to find it in a garden or park, or a simple nature activity to try with it"
   ],
-  "safetyNote": "Brief safety note: is it toxic, edible, or safe to handle?"
+  "safetyNote": "1-2 friendly sentences. Is it safe to touch? Should you check with a grown-up before picking or tasting? Keep it warm and not scary."
 }
 ''';
 
@@ -177,241 +184,279 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this ex
   ) {
     return AiContent(
       introduction:
-          '$commonName ($scientificName) is a remarkable member of the $family family, '
-          'celebrated for its unique adaptations and ecological role in natural habitats.',
+          'Say hello to $commonName — one of nature\'s coolest members of the $family family! '
+          'This plant has been living on Earth way longer than any of us, and it\'s full of amazing secrets waiting to be discovered.',
       description:
-          '$scientificName exhibits structural characteristics typical of $family. '
-          'It thrives where conditions suit its evolutionary heritage, contributing to '
-          'local biodiversity and supporting a web of dependent organisms.',
+          'You can find $commonName (its science name is $scientificName) growing in gardens, parks, and wild places around the world. '
+          'It belongs to the $family family — a big group of plants that all share special features. '
+          'Like all plants, it makes its own food using sunlight — a superpower called photosynthesis!',
       funFacts: [
-        'Members of the $family family have diversified over millions of years into thousands of species worldwide.',
-        '$commonName plays a valuable role in its ecosystem by providing resources for local wildlife.',
-        'Botanists study $scientificName to better understand plant evolution and adaptation strategies.',
+        'The $family family is one of the most widespread plant families on Earth, with thousands of species on every continent!',
+        '$commonName is loved by pollinators like bees and butterflies who visit it for nectar and pollen — tiny meals that keep our whole food web alive.',
+        'Plants like $scientificName have been living on this planet for millions of years — they were here long before humans existed!',
       ],
       observationTips: [
-        'Examine the leaf arrangement (alternate, opposite, or whorled) along the stem for identification clues.',
-        'Look at petal count and symmetry — these are key diagnostic features in $family.',
+        'Get up close and count the petals — most plants in the $family family have a special petal pattern. How many can you find?',
+        'Look very carefully at the leaves: are they smooth or fuzzy? Do they grow opposite each other or one by one? Being a nature detective is all about noticing the small stuff!',
       ],
       safetyNote:
-          'Always wash hands after handling unfamiliar plants and never consume wild flora without verified expert guidance.',
+          '🧤 Explorer safety tip: Always wash your hands after touching plants outside, and never taste a wild plant unless a knowledgeable grown-up says it\'s safe. When in doubt, just admire — don\'t nibble!',
     );
   }
 }
+
 
 // ============================================================================
 // DEMO FALLBACK IMPLEMENTATION (used when no API key is present)
 // ============================================================================
 
-/// Offline demo implementation with curated botanical knowledge for common plants.
+/// Offline demo implementation with curated fun botanical knowledge for common plants.
+/// Tone: warm, playful, kid-friendly — not academic.
 /// Used as a fallback when no Gemini API key is configured.
 class DemoAiContentService implements AiContentService {
   static final Map<String, AiContent> _curatedKnowledge = {
-    'bellis perennis': const AiContent(
+    'bellis perennis': AiContent(
       introduction:
-          'The cheerful Common Daisy is one of the most recognizable European wildflowers, opening its petals with the morning sun.',
+          'Meet the Common Daisy — one of the cheeriest little flowers you\'ll ever find peeking up from a lawn! 🌼 '
+          'It opens its sunny petals with the morning light and closes them like a sleepy eye at dusk.',
       description:
-          'Bellis perennis is a low-growing perennial herbaceous plant featuring spoon-shaped leaves arranged in a flat basal rosette. Its composite flower heads have bright white ray florets surrounding a vibrant yellow central disc of tubular florets.',
-      funFacts: [
-        'The name "Daisy" originates from the Old English "daeges eage", meaning "day\'s eye", because its petals open at dawn and close at dusk.',
-        'Daisy leaves and petals are rich in Vitamin C and have traditionally been used in wild herbal salads.',
-        'Each daisy blossom is not actually a single flower, but a composite head of over a hundred tiny flowers working together.',
+          'You can spot daisies in grassy meadows, garden lawns, and parks all across Europe and beyond. '
+          'Up close, what looks like one flower is actually over 100 tiny flowers all packed together — the yellow centre is a crowd of mini blooms, and each white "petal" is its own little flower too! '
+          'Bees and hoverflies absolutely love visiting them for a quick snack of nectar.',
+      funFacts: const [
+        'The name "Daisy" comes from the Old English "daeges eage", meaning "day\'s eye" — because it opens at dawn and closes at night, just like an eye blinking! 👁️',
+        'Did you know daisy petals and young leaves are edible? People added them to salads for centuries — but always ask a grown-up before tasting anything wild!',
+        'Each daisy is not one flower — it\'s a community of over 100 tiny flowers all working together as a team. Nature is wild! 🤯',
       ],
-      observationTips: [
-        'Watch how the flower head tracks the sun as it moves across the sky (heliotropism).',
-        'Look closely at the yellow center with a magnifying glass to spot tiny individual disc florets blooming from the outside inward.',
+      observationTips: const [
+        'Try watching the same daisy at different times of day — does it open wide in the sun and close at night? That\'s called "sleeping" and it\'s totally real! 😴',
+        'Grab a magnifying glass and zoom into the yellow centre — you\'ll see hundreds of tiny tube-shaped flowers. Count how many you can spot!',
       ],
       safetyNote:
-          'Generally non-toxic, but people with Asteraceae allergies should avoid contact or consumption.',
+          '✅ Daisies are generally safe to touch. If you\'re curious about nibbling a petal, check with a grown-up first — especially if you have allergies, since daisies are related to ragweed.',
     ),
-    'taraxacum officinale': const AiContent(
+    'taraxacum officinale': AiContent(
       introduction:
-          'Often dismissed as a common lawn weed, the Dandelion is actually an extraordinary nutritional powerhouse and essential early food source for pollinators.',
+          'The Dandelion might look like a pesky weed to some, but it\'s actually one of nature\'s most incredible superplants! 🦁 '
+          'From its lion-tooth leaves to its magical puffball seeds, this plant is packed with surprises.',
       description:
-          'A taprooted perennial herb belonging to the sunflower family. It features deeply toothed leaves forming a basal rosette and hollow, milky stems bearing brilliant yellow composite heads that transform into spherical seed clocks (pappus).',
-      funFacts: [
-        'The name comes from the French "dent-de-lion" (lion\'s tooth), referring to the serrated edges of its leaves.',
-        'Every single part of the dandelion—from taproot to golden blossom—is edible and packed with vitamins A, C, and K.',
-        'Dandelion seeds can travel more than 5 miles on gentle summer breezes thanks to their parachute-like pappus structures.',
+          'Dandelions pop up in lawns, meadows, roadsides, and even cracks in pavements all around the world — they\'re tough survivors! '
+          'That white fluffy ball you love to blow? Each tiny strand is a seed attached to its own parachute, ready to drift on the breeze to find a new home. '
+          'Bees especially love dandelions in early spring when other flowers haven\'t bloomed yet — they\'re like a first breakfast for hungry bees! 🐝',
+      funFacts: const [
+        'The name comes from French "dent-de-lion", meaning "lion\'s tooth" — look at those spiky leaf edges and you\'ll totally see it! 🦷',
+        'Every single part of a dandelion is edible — flowers can be made into syrup, leaves go in salads, and roots can be roasted into a coffee-like drink. Try it with a grown-up!',
+        'A dandelion seed can travel more than 5 kilometres on a gentle breeze, thanks to its clever parachute design — engineers actually study it to design better drones! 🚁',
       ],
-      observationTips: [
-        'Notice how morning flowers close tightly before rainfall to protect their pollen.',
-        'Examine a seed head in gentle wind to see how aerodynamic the pappus fibers are.',
+      observationTips: const [
+        'Find a dandelion puffball and blow gently — count how many puffs it takes to clear all the seeds! Folklore says the number tells you what hour it is. ⏰',
+        'Look for dandelions in early morning and watch the flowers close before rain — they\'re like little weather forecasters! Does yours close before the clouds come?',
       ],
       safetyNote:
-          'The milky latex sap can occasionally cause mild skin irritation in sensitive individuals.',
+          '🌿 Dandelions are safe to touch and even eat — but the milky white sap from the stem can irritate sensitive skin. Always wash your hands after handling, and check with a grown-up before tasting wild plants!',
     ),
-    'rosa canina': const AiContent(
+    'rosa canina': AiContent(
       introduction:
-          'The Wild Dog Rose is an ancient climbing hedgerow shrub that adorns countryside lanes with fragrant pastel pink and white blooms.',
+          'The Wild Dog Rose is like a fairy-tale shrub — adorned with delicate pink blossoms and bright red berries called rose hips! 🌹 '
+          'It\'s been growing in hedgerows and wild places for thousands of years, and birds absolutely adore it.',
       description:
-          'A deciduous shrub growing up to 3 meters tall, armed with sharp curved thorns that help it climb through hedgerows. It bears pinnate leaves with 5–7 toothed leaflets, fragrant single flowers, and glossy scarlet oval hips in autumn.',
-      funFacts: [
-        'During World War II, British school children gathered tons of wild rose hips to make vitamin C syrup when citrus fruits were unavailable.',
-        'Pliny the Elder recorded that the plant was named Dog Rose because a Roman soldier cured himself of rabies using its root.',
-        'Rose hips contain up to 20 times more vitamin C by weight than oranges.',
+          'You\'ll find Dog Roses scrambling through hedgerows, woodland edges, and roadsides across Europe, using their hooked thorns like natural grappling hooks to climb. '
+          'In early summer the soft pink flowers smell gorgeous and attract lots of bees and butterflies. '
+          'By autumn, they transform into shiny red rose hips — little fruits packed with more vitamin C than oranges! 🍊',
+      funFacts: const [
+        'Rose hips contain up to 20 times more vitamin C than oranges! During WWII, British children collected them to make vitamin C syrup when oranges were too hard to find.',
+        'Rose hip syrup is delicious — you can make it with a grown-up by simmering hips with water and sugar. Just remove the tickly hairs inside first!',
+        'The plant\'s name "Dog Rose" is ancient — the Roman writer Pliny said a soldier cured a dog bite using its root. Whether true or not, it\'s a great story! 🐕',
       ],
-      observationTips: [
-        'Notice the hooked curved thorns, which act like natural climbing grappling hooks.',
-        'In late autumn, check the bright red rose hips for feeding winter birds like blackbirds and thrushes.',
+      observationTips: const [
+        'Look closely at the thorns — they\'re curved like fish hooks, not straight like pins. Run a finger VERY carefully along the stem (without pressing!) to feel the shape. So clever!',
+        'In autumn, count the red hips on one branch and look for birds like robins and thrushes pecking at them. How many birds can you spot in 5 minutes? 🐦',
       ],
       safetyNote:
-          'Hairs inside the rose hips can be irritant to the digestive tract if not removed before culinary use.',
+          '⚠️ Rose hips are great for wildlife but be careful — the tiny hairs inside the fruit are super itchy! Always cook or strain them with a grown-up\'s help. Never eat anything unprocessed from the wild without checking first.',
     ),
-    'lavandula angustifolia': const AiContent(
+    'lavandula angustifolia': AiContent(
       introduction:
-          'English Lavender is renowned worldwide for its soothing aromatic oils, silver-green foliage, and fragrant violet floral spires.',
+          'Lavender is basically nature\'s calmness in plant form — one sniff of those purple spikes and you instantly feel more relaxed! 💜 '
+          'It\'s been a favourite of bees, perfumers, and herbalists for thousands of years.',
       description:
-          'A compact, strongly aromatic evergreen subshrub native to Mediterranean rocky hillsides. It features narrow, linear leaves covered in fine hairs and terminal spikes of deep purple to lilac two-lipped flowers rich in nectar.',
-      funFacts: [
-        'Lavender essential oil has been used since ancient Roman times for bathing, cooking, and as a natural moth repellent.',
-        'Bees are strongly attracted to lavender — a single healthy bush can produce enough nectar to fill a large honey jar.',
-        'The word "lavender" derives from the Latin "lavare" (to wash), since Romans scented their baths with its flowers.',
+          'Originally from rocky Mediterranean hillsides, lavender now grows in gardens all over the world thanks to its incredible scent and beautiful purple flowers. '
+          'Bees go absolutely crazy for it — a single lavender bush can feed hundreds of bees on a sunny summer day. '
+          'The tiny leaves are covered in microscopic hairs that hold all those magical aromatic oils.',
+      funFacts: const [
+        'The word "lavender" comes from Latin "lavare" meaning "to wash" — ancient Romans added it to their bathwater for a lovely smell. 🛁 You can still buy lavender bath products today!',
+        'You can make a simple lavender sachet to put in your wardrobe — dried flowers in a small cloth pouch keep clothes smelling fresh AND keep moths away. Nature\'s own air freshener!',
+        'Lavender fields in full bloom can host tens of thousands of bees on a sunny day — the humming is so loud you can hear it from metres away! 🐝',
       ],
-      observationTips: [
-        'Count the number of flower whorls on a single spike — lavender typically has 6–10 stacked rings.',
-        'Rub a leaf gently between your fingers to release the essential oils and appreciate the characteristic camphor-like fragrance.',
+      observationTips: const [
+        'Rub a single lavender leaf gently between your fingers and then smell your hand — that\'s the essential oil releasing! Do you think it smells calm? Like flowers? Like herbs?',
+        'Count the little flower rings stacked up along one spike — you should find between 6 and 10 whorls. Each tiny flower has its own little bee landing pad! 🌸',
       ],
       safetyNote:
-          'Generally safe — lavender oil is widely used in aromatherapy, though undiluted essential oil can irritate sensitive skin.',
+          '✅ Lavender is very safe to touch and smell — even kids and pets are fine around it. If you want to use lavender oil from a bottle, ask a grown-up to dilute it first, as pure essential oils can irritate skin.',
     ),
-    'trifolium repens': const AiContent(
+    'trifolium repens': AiContent(
       introduction:
-          'White Clover is a beloved low-growing groundcover that enriches the soil by fixing atmospheric nitrogen into plant-accessible nutrients.',
+          'White Clover is a tiny lawn superhero — it secretly makes the soil healthier just by growing! 🍀 '
+          'And if you find a four-leaf clover, congratulations: you just beat 1-in-10,000 odds!',
       description:
-          'A perennial herbaceous plant with creeping runners (stolons) that root at node joints. Its trifoliate leaves feature distinctive faint white crescent marks ("watermarks"), accompanied by spherical heads of sweet-smelling white or pale pink florets.',
-      funFacts: [
-        'White Clover has a symbiotic relationship with Rhizobium soil bacteria that turn atmospheric nitrogen into natural organic fertilizer.',
-        'The odds of finding a genuine four-leaf clover mutation in nature are approximately 1 in 10,000.',
-        'It is one of the most important honey plants in the world, producing exceptionally clear, delicate honey.',
+          'You\'ll find White Clover creeping through lawns, meadows, and roadsides almost everywhere in the world. '
+          'It has an incredible superpower: it works with tiny soil bacteria called Rhizobium (think of them as a friendly underground team!) to pull nitrogen out of the air and turn it into natural fertiliser. '
+          'Its sweet white flowers are one of the most important sources of nectar for honeybees in the whole world.',
+      funFacts: const [
+        'Clover is a natural soil-booster — farmers plant it on purpose to feed the earth without chemicals. It\'s basically nature\'s own fertiliser factory! 🌿',
+        'White clover honey is light, sweet, and delicate — one of the most popular kinds of honey in the world, all thanks to this small but mighty plant!',
+        'Your chances of randomly finding a four-leaf clover are about 1 in 10,000 — but patient searchers have found patches with many! The world record is 166 found in one hour. 🍀',
       ],
-      observationTips: [
-        'Look closely at the leaflets for the white V-shaped watermark.',
-        'Check the base of the clover patch in early morning to see how leaves fold upward at night (nyctinastic movements).',
+      observationTips: const [
+        'Lie down in the grass and look through a clover patch slowly — search for a four-leaf mutation! Each leaflet has a little white crescent mark like a smile. 😊',
+        'Visit a clover patch in the morning and watch how the leaves fold upward at night to sleep — this is called "leaf sleep" and it\'s totally real! Come back at dusk to see it happen.',
       ],
       safetyNote:
-          'Safe for humans in small amounts, but raw foliage should not be eaten in large quantities due to trace glycosides.',
+          '✅ White clover is safe to touch and even nibble a flower or two for fun! Just don\'t eat large amounts of raw leaves. Always wash your hands after rolling in the grass — and enjoy the hunt!',
     ),
-    'hedera helix': const AiContent(
+    'hedera helix': AiContent(
       introduction:
-          'Common Ivy is an evergreen climbing vine that transforms bare walls and tree trunks into verdant tapestries throughout the year.',
+          'Common Ivy is nature\'s ultimate climber — it can scale walls, trees, and fences using its own tiny sticky pads, no nails or rope needed! 🧗 '
+          'And despite looking like it\'s taking over, it\'s actually one of the most important plants for wildlife in winter.',
       description:
-          'A vigorous woody perennial that climbs using adhesive aerial rootlets. It produces two distinct leaf forms: deeply lobed juvenile leaves on climbing shoots and unlobed, oval adult leaves on flowering branches near the top.',
-      funFacts: [
-        'Ivy berries are a critical winter food source for birds such as wood pigeons, blackbirds, and thrushes when other food is scarce.',
-        'The plant has been a symbol of fidelity and eternal life since ancient Greece, where athletes were crowned with ivy wreaths.',
-        'Ivy can grow over 30 meters high and live for more than 400 years when established on a suitable support structure.',
+          'You\'ll find Ivy carpeting forest floors, climbing old buildings, and draping over trees in parks and woodlands across Europe and beyond. '
+          'It has two totally different leaf shapes on the same plant — spiky and lobed near the bottom, smooth and oval near the top where it flowers. '
+          'In late autumn when almost nothing else blooms, Ivy produces tiny flowers that are a vital last feast for butterflies and bees before winter. 🦋',
+      funFacts: const [
+        'Ivy doesn\'t steal food from trees — it only uses them as a climbing frame to reach the light. It\'s not a parasite, just a very determined climber!',
+        'The dark blue-black berries are critically important winter food for birds like wood pigeons, blackbirds, and thrushes when snow covers everything else. Birds then spread ivy seeds everywhere! 🐦',
+        'A well-established ivy can live for over 400 years and climb 30 metres high — that\'s taller than a 10-storey building!',
       ],
-      observationTips: [
-        'Compare the lobed leaves low on the wall with the smooth, oval leaves near the flowering top.',
-        'Check for small black winter berries that provide high-fat sustenance to birds during freezing months.',
+      observationTips: const [
+        'Look for two completely different leaf shapes on the SAME plant — spiky star-shaped ones low down and smooth oval ones near the top. Can you find both? It\'s like a shape scavenger hunt!',
+        'In winter, look for clusters of dark berries and watch patiently for birds coming to eat them. How many different bird species can you spot visiting the same ivy plant in 10 minutes? 🐦',
       ],
       safetyNote:
-          'Ivy berries and leaves contain falcarinol and saponins which are toxic to humans and pets if ingested.',
+          '⚠️ Important: Ivy berries and leaves are toxic to humans and pets if eaten — never taste them! It\'s safe to touch ivy (though some people\'s skin reacts), but always wash your hands well afterwards.',
     ),
   };
 
   static final Map<String, AiContent> _curatedKnowledgeFr = {
-    'bellis perennis': const AiContent(
+    'bellis perennis': AiContent(
       introduction:
-          'La joyeuse Pâquerette est l\'une des fleurs sauvages les plus emblématiques de nos prairies, ouvrant ses pétales dès l\'apparition des premiers rayons du soleil.',
+          'La Pâquerette, c\'est la petite étoile des prairies — elle ouvre ses pétales le matin comme des yeux qui se réveillent ! 🌼 '
+          'Son nom vient d\'ailleurs de la fête de Pâques, car elle fleurit joyeusement au printemps.',
       description:
-          'Bellis perennis est une plante herbacée vivace formant une rosette basale de feuilles spatulées. Ses capitules floraux portent des fleurons ligulés blanc pur teintés de pourpre autour d\'un cœur éclatant de fleurons tubulaires jaunes.',
-      funFacts: [
-        'Son nom français "Pâquerette" vient de sa floraison abondante autour de la fête de Pâques au printemps.',
-        'Ses feuilles et pétales sont riches en vitamine C et étaient traditionnellement dégustés en salades sauvages revigorantes.',
-        'Chaque fleur de pâquerette n\'est pas une fleur unique, mais une inflorescence composée réunissant plus d\'une centaine de fleurs minuscules.',
+          'On trouve la Pâquerette partout : dans les pelouses, les prairies et les parcs de toute l\'Europe. '
+          'Ce qui ressemble à une seule fleur est en réalité plus de 100 minuscules fleurs regroupées — les "pétales" blancs sont chacun une fleur à part entière, et le cœur jaune en est plein d\'autres ! '
+          'Les abeilles et les syrphes adorent y butiner pour siroter du nectar. 🐝',
+      funFacts: const [
+        'Son nom vient de "daeges eage" en vieil anglais, qui signifie "œil du jour" — parce qu\'elle s\'ouvre à l\'aube et se ferme la nuit ! 👁️',
+        'Les pétales et jeunes feuilles de Pâquerette sont comestibles — on les glissait dans des salades depuis des siècles. Demande à un adulte avant de goûter une plante sauvage !',
+        'Chaque fleur de Pâquerette, c\'est une équipe de plus de 100 toutes petites fleurs qui travaillent ensemble. La nature est incroyable ! 🤯',
       ],
-      observationTips: [
-        'Observez comment le capitule suit le soleil d\'est en ouest tout au long de la journée (héliotropisme).',
-        'À l\'aide d\'une loupe, découvrez les minuscules fleurons du disque jaune qui s\'ouvrent progressivement de l\'extérieur vers le centre.',
+      observationTips: const [
+        'Observe la même Pâquerette à différentes heures de la journée — est-ce qu\'elle se ferme la nuit ? C\'est son "sommeil" et c\'est tout à fait réel ! 😴',
+        'Prends une loupe et zoome sur le cœur jaune — tu verras des dizaines de petites fleurs en tube. Combien peux-tu en compter ?',
       ],
       safetyNote:
-          'Plante généralement inoffensive, mais les personnes allergiques aux Astéracées doivent éviter le contact direct.',
+          '✅ La Pâquerette est généralement sans danger. Si tu veux goûter un pétale, demande d\'abord à un adulte — surtout si tu es allergique aux plantes de la famille des Astéracées.',
     ),
-    'taraxacum officinale': const AiContent(
+    'taraxacum officinale': AiContent(
       introduction:
-          'Souvent qualifié de simple mauvaise herbe, le Pissenlit est en réalité un trésor nutritionnel exceptionnel et une source précoce de nectar vitale pour les pollinisateurs.',
+          'Le Pissenlit a l\'air d\'une simple mauvaise herbe, mais c\'est en réalité l\'une des super-plantes les plus incroyables de la nature ! 🦁 '
+          'De ses feuilles en dents de lion à ses graines parachutes magiques, il regorge de surprises.',
       description:
-          'Une plante vivace à racine pivotante de la famille des Astéracées. Elle présente des feuilles découpées en rosette et des tiges creuses à sève laiteuse portant de superbes capitules jaunes qui se métamorphosent en globes soyeux d\'aigrettes.',
-      funFacts: [
-        'Son nom "Pissenlit" fait référence à ses propriétés diurétiques bien connues en phytothérapie traditionnelle.',
-        'Chaque partie du pissenlit—des racines torréfiées aux fleurs dorées—est comestible et gorgée de vitamines A, C et K.',
-        'Les graines peuvent voyager à plus de 8 kilomètres portées par la brise grâce à leur aigrette en parachute naturel.',
+          'Les Pissenlits poussent dans les pelouses, les prairies, les bords de route et même les fissures des trottoirs — de vrais survivants ! '
+          'Cette boule blanche et duvetteuse que tu adores souffler ? Chaque brin est une graine avec son propre parachute, prête à voyager au vent pour trouver un nouveau foyer. '
+          'Les abeilles adorent les Pissenlits au début du printemps, quand peu d\'autres fleurs sont encore écloses — ils sont comme leur premier petit-déjeuner ! 🐝',
+      funFacts: const [
+        'Son nom vient de "dent de lion" — regarde les bords dentelés de ses feuilles et tu comprends tout de suite ! 🦷',
+        'Toutes les parties du Pissenlit sont comestibles — les fleurs en sirop, les feuilles en salade, les racines torréfiées comme une boisson chaude. Essaie avec un adulte !',
+        'Une graine de Pissenlit peut voyager à plus de 5 kilomètres sur une légère brise, grâce à son système de parachute que les ingénieurs étudient pour concevoir des drones ! 🚁',
       ],
-      observationTips: [
-        'Remarquez comment les fleurs se referment hermétiquement avant la pluie pour protéger leur précieux pollen.',
-        'Observez la structure géométrique parfaite du capitule plumeux avant la dispersion des graines par le vent.',
+      observationTips: const [
+        'Trouve une boule de graines et souffle doucement — compte combien de souffles il faut pour tout disperser ! La légende dit que le nombre indique l\'heure. ⏰',
+        'Observe les fleurs tôt le matin : est-ce qu\'elles se referment avant la pluie ? Les Pissenlits sont de vrais petits météorologues !',
       ],
       safetyNote:
-          'Le latex blanc qui s\'écoule de la tige peut provoquer de légères irritations cutanées chez les personnes sensibles.',
+          '🌿 Le Pissenlit est sans danger à toucher et même à manger — mais le suc laiteux de la tige peut irriter les peaux sensibles. Lavez-vous les mains après et demandez à un adulte avant de goûter des plantes sauvages !',
     ),
-    'rosa canina': const AiContent(
+    'rosa canina': AiContent(
       introduction:
-          'L\'Églantier ou rosier sauvage est un arbuste vigoureux qui orne les haies champêtres de délicates fleurs rose pâle au parfum subtil.',
+          'L\'Églantier, c\'est l\'arbuste de conte de fées — avec ses jolies fleurs roses et ses baies rouge vif appelées cynorrhodons ! 🌹 '
+          'Il pousse dans les haies et les chemins sauvages depuis des millénaires, et les oiseaux l\'adorent.',
       description:
-          'Un arbrisseau épineux atteignant jusqu\'à 3 mètres de hauteur, muni d\'aiguillons recourbés qui lui permettent de grimper. Il porte des feuilles pennées, de grandes fleurs à 5 pétales et de superbes baies rouge vif appelées cynorrhodons en automne.',
-      funFacts: [
-        'Le cynorrhodon est surnommé "gratte-cul" en raison des petits poils irritants entourant ses graines.',
-        'Les baies d\'églantier contiennent jusqu\'à 20 fois plus de vitamine C que les oranges fraîches.',
-        'Pline l\'Ancien rapportait que sa racine était jadis utilisée pour guérir les morsures de chiens enragés.',
+          'L\'Églantier grimpe dans les haies, les lisières de bois et les bords de route grâce à ses épines recourbées qui l\'accrochent comme des grappins naturels. '
+          'En début d\'été, ses fleurs roses parfumées attirent de nombreuses abeilles et papillons. '
+          'En automne, elles se transforment en cynorrhodons rouges brillants — des petits fruits bourrés de vitamine C, encore plus que les oranges ! 🍊',
+      funFacts: const [
+        'Les cynorrhodons contiennent jusqu\'à 20 fois plus de vitamine C que les oranges ! Pendant la Seconde Guerre mondiale, les enfants britanniques en collectaient pour faire du sirop.',
+        'On peut faire un délicieux sirop de cynorrhodon avec un adulte — on fait mijoter les baies avec de l\'eau et du sucre. Il faut d\'abord enlever les petits poils irritants à l\'intérieur.',
+        'Le nom "Églantier" vient du latin, et Pline l\'Ancien raconte qu\'un soldat romain s\'est guéri d\'une morsure de chien grâce à sa racine. Vraie ou non, c\'est une chouette histoire ! 🐕',
       ],
-      observationTips: [
-        'Remarquez les aiguillons crochus agissant comme de véritables grappins d\'escalade naturelle.',
-        'À la fin de l\'automne, observez les merles et grives qui viennent se nourrir des cynorrhodons mûrs.',
+      observationTips: const [
+        'Regarde de près les épines — elles sont recourbées comme des hameçons, pas droites comme des aiguilles. Approche ton doigt très doucement (sans appuyer !) pour sentir la forme. Malin !',
+        'En automne, compte les cynorrhodons rouges sur une branche et guette les oiseaux comme les merles qui viennent les picorer. Combien en vois-tu en 5 minutes ? 🐦',
       ],
       safetyNote:
-          'Les poils entourant les graines internes doivent impérativement être retirés avant toute préparation culinaire.',
+          '⚠️ Les cynorrhodons sont excellents pour les animaux, mais attention — les poils fins à l\'intérieur des baies grattent beaucoup ! Fais-les toujours cuire ou filtrer avec l\'aide d\'un adulte avant de les consommer.',
     ),
-    'lavandula angustifolia': const AiContent(
+    'lavandula angustifolia': AiContent(
       introduction:
-          'La Lavande vraie est célèbre dans le monde entier pour ses huiles essentielles apaisantes, son feuillage vert argenté et ses épis floraux bleu-violet.',
+          'La Lavande, c\'est la plante du calme par excellence — une seule bouffée de ses épis violets et on se sent tout de suite apaisé ! 💜 '
+          'C\'est le régal préféré des abeilles, des parfumeurs et des herboristes depuis des millénaires.',
       description:
-          'Un sous-arbrisseau aromatique vivace originaire des collines rocailleuses méditerranéennes. Ses feuilles étroites sont couvertes de poils fins et ses tiges portent des épis denses de fleurs bilabiées riches en nectar.',
-      funFacts: [
-        'Les Romains parfumaient déjà leurs thermes et leurs vêtements avec la lavande, d\'où son nom issu du latin "lavare" (laver).',
-        'Un seul buisson de lavande en pleine floraison peut nourrir des centaines d\'abeilles chaque jour.',
-        'L\'huile essentielle de lavande fine est reconnue pour ses vertus calmantes et purifiantes exceptionnelles.',
+          'Originaire des collines rocailleuses de Méditerranée, la Lavande pousse maintenant dans les jardins du monde entier grâce à son parfum incroyable et ses fleurs violettes. '
+          'Les abeilles en raffolent — un seul buisson de lavande peut nourrir des centaines d\'abeilles une journée de soleil. '
+          'Ses petites feuilles sont couvertes de poils microscopiques qui retiennent toutes ces huiles aromatiques magiques.',
+      funFacts: const [
+        'Le mot "lavande" vient du latin "lavare" qui signifie "laver" — les Romains la mettaient déjà dans leur eau de bain pour sentir bon ! 🛁',
+        'Tu peux fabriquer un sachet de lavande à glisser dans ton armoire — des fleurs séchées dans un petit tissu gardent les vêtements frais ET éloignent les mites. Le désodorisant de la nature !',
+        'Les champs de lavande en fleurs peuvent accueillir des dizaines de milliers d\'abeilles par beau temps — le bourdonnement est si fort qu\'on l\'entend de loin ! 🐝',
       ],
-      observationTips: [
-        'Frottez délicatement une feuille entre vos doigts pour libérer les essences aromatiques camphrées.',
-        'Comptez les verticilles de fleurs le long d\'un épi : on en dénombre généralement entre 6 et 10 anneaux superposés.',
+      observationTips: const [
+        'Frotte doucement une feuille de lavande entre tes doigts puis sens ta main — c\'est l\'huile essentielle qui se libère ! Ça sent le calme ? Les fleurs ? Les herbes ?',
+        'Compte les petits anneaux de fleurs empilés sur un épi — tu devrais en trouver entre 6 et 10. Chaque minuscule fleur a sa propre piste d\'atterrissage pour les abeilles ! 🌸',
       ],
       safetyNote:
-          'Plante sécuritaire, bien que l\'huile essentielle pure doive être diluée avant application cutanée chez les enfants.',
+          '✅ La lavande est très sûre à toucher et à sentir. Si tu veux utiliser de l\'huile essentielle de lavande, demande à un adulte de la diluer d\'abord.',
     ),
-    'trifolium repens': const AiContent(
+    'trifolium repens': AiContent(
       introduction:
-          'Le Trèfle blanc est un couvre-sol nourricier qui enrichit naturellement la terre en fixant l\'azote de l\'air dans le sol.',
+          'Le Trèfle blanc est un vrai super-héros de pelouse — il rend le sol plus riche juste en poussant ! 🍀 '
+          'Et si tu trouves un trèfle à quatre feuilles, félicitations : tu viens de réussir un exploit à 1 chance sur 10 000 !',
       description:
-          'Une plante herbacée vivace rampante qui s\'étend par des tiges stolonifères. Ses feuilles trifoliées arborent souvent une marque blanche caractéristique en croissant, accompagnées de têtes florales globuleuses blanches très parfumées.',
-      funFacts: [
-        'Le trèfle vit en symbiose avec des bactéries Rhizobium qui transforment l\'azote de l\'air en engrais naturel.',
-        'La probabilité de trouver spontanément un trèfle à quatre feuilles dans la nature est d\'environ 1 sur 10 000.',
-        'C\'est l\'une des plantes mellifères les plus précieuses au monde pour la production d\'un miel clair et délicat.',
+          'On trouve le Trèfle blanc rampant dans les pelouses, les prairies et les bords de chemin presque partout dans le monde. '
+          'Il coopère avec de petites bactéries du sol appelées Rhizobium — une équipe amie sous la terre ! — pour transformer l\'azote de l\'air en engrais naturel. '
+          'Ses jolies fleurs blanches parfumées sont l\'une des sources de nectar les plus précieuses au monde pour les abeilles mellifères.',
+      funFacts: const [
+        'Le Trèfle renforce naturellement la terre — les agriculteurs en plantent exprès pour nourrir le sol sans produits chimiques. Une vraie usine à engrais naturels ! 🌿',
+        'Le miel de trèfle blanc est léger, doux et délicat — l\'un des miels les plus populaires du monde, tout ça grâce à cette petite plante !',
+        'Tes chances de trouver un trèfle à quatre feuilles par hasard sont d\'environ 1 sur 10 000 — mais le record du monde est de 166 trouvés en une heure ! 🍀',
       ],
-      observationTips: [
-        'Examinez les feuilles au crépuscule pour observer leur repliement nocturne protecteur (sommeil foliaire).',
-        'Recherchez la marque en V blanc argenté présente sur chaque foliole.',
+      observationTips: const [
+        'Allonge-toi dans l\'herbe et cherche lentement dans un patch de trèfles — guette une feuille à quatre folioles ! Chaque foliole a un petit croissant blanc en forme de sourire. 😊',
+        'Visite un patch de trèfle le soir et observe comment les feuilles se replient pour "dormir" — c\'est le "sommeil foliaire" et c\'est 100% réel ! Reviens à l\'aube pour les voir se rouvrir.',
       ],
       safetyNote:
-          'Comestible en petites quantités, mais évitez de consommer de grandes quantités de feuilles crues en raison de traces de glycosides.',
+          '✅ Le Trèfle blanc est sans danger à toucher et même à grignoter une petite fleur ! Évite juste de manger de grandes quantités de feuilles crues. Lave-toi les mains après — et profite de la chasse !',
     ),
-    'hedera helix': const AiContent(
+    'hedera helix': AiContent(
       introduction:
-          'Le Lierre grimpant est une liane persistante essentielle à la biodiversité forestière, offrant fleurs tardives et baies hivernales.',
+          'Le Lierre, c\'est le grimpeur ultime de la nature — il escalade les murs, les arbres et les clôtures avec ses propres petites ventouses, sans clou ni corde ! 🧗 '
+          'Et malgré son air envahissant, c\'est l\'une des plantes les plus précieuses pour la faune en hiver.',
       description:
-          'Une vigoureuse liane ligneuse qui s\'accroche aux supports grâce à de petits crampons aériens non parasites. Il présente deux types de feuilles distincts : lobées sur les rameaux grimpants et ovales entières sur les rameaux fertiles.',
-      funFacts: [
-        'Le lierre ne suce pas la sève des arbres : il s\'en sert uniquement de tuteur pour capter la lumière du ciel.',
-        'Ses fleurs automnales constituent l\'ultime festin de nectar pour les papillons et abeilles avant l\'hiver.',
-        'Un pied de lierre bien établi peut vivre plus de 400 ans et grimper jusqu\'à 30 mètres de hauteur.',
+          'Le Lierre tapisse les sols de forêts, habille les vieux bâtiments et drapé les arbres dans les parcs et les bois de toute l\'Europe. '
+          'Il a deux formes de feuilles complètement différentes sur la même plante — étoilées et lobées en bas, lisses et ovales en haut où il fleurit. '
+          'En fin d\'automne, le Lierre produit de petites fleurs qui sont un festin vital pour les papillons et les abeilles avant l\'hiver. 🦋',
+      funFacts: const [
+        'Le Lierre ne vole pas la nourriture des arbres — il les utilise juste comme échafaudage pour atteindre la lumière. Ce n\'est pas un parasite, juste un grimpeur très déterminé !',
+        'Les baies bleu-noir sont une nourriture hivernale indispensable pour les merles, les palombes et les grives quand la neige recouvre tout. Les oiseaux dispersent ensuite les graines partout ! 🐦',
+        'Un Lierre bien établi peut vivre plus de 400 ans et grimper à 30 mètres de hauteur — plus haut qu\'un immeuble de 10 étages !',
       ],
-      observationTips: [
-        'Comparez la forme des feuilles palmées du bas avec les feuilles ovales non lobées situées au sommet ensoleillé.',
-        'À la fin de l\'hiver, repérez les baies noires qui sauvent de nombreux oiseaux du gel.',
+      observationTips: const [
+        'Cherche deux formes de feuilles complètement différentes sur la MÊME plante — des étoilées en bas et des ovales lisses en haut. Tu peux les trouver toutes les deux ? C\'est une chasse aux formes !',
+        'En hiver, guette les grappes de baies sombres et observe patiemment les oiseaux venir les manger. Combien d\'espèces d\'oiseaux différentes peux-tu repérer en 10 minutes ? 🐦',
       ],
       safetyNote:
-          'Toutes les parties du lierre (notamment les baies noires) sont toxiques en cas d\'ingestion pour l\'humain et les animaux de compagnie.',
+          '⚠️ Important : les baies et les feuilles de Lierre sont toxiques pour les humains et les animaux si on les mange — ne les goûte jamais ! Toucher le Lierre est généralement sans danger, mais lave toujours bien tes mains après.',
     ),
   };
 
@@ -433,23 +478,26 @@ class DemoAiContentService implements AiContentService {
         return _curatedKnowledgeFr[key]!;
       }
 
-      // French dynamic fallback
+      // French dynamic fallback — fun, kid-friendly tone
       return AiContent(
         introduction:
-            '$commonName ($scientificName) est une plante captivante de la famille des $family, réputée pour ses remarquables adaptations écologiques.',
+            'Découvre $commonName — un membre fascinant de la famille des $family ! 🌿 '
+            'Cette plante incroyable cache plein de secrets que les explorateurs de la nature adorent percer.',
         description:
-            '$scientificName présente les traits caractéristiques de la famille botanique des $family. Elle prospère dans les milieux tempérés où son feuillage capte la lumière pour nourrir l\'écosystème local.',
+            '$commonName (son nom scientifique est $scientificName) pousse dans des jardins, des parcs et des espaces sauvages à travers le monde. '
+            'Comme toutes les plantes, elle fabrique sa propre nourriture à partir de la lumière du soleil — un super-pouvoir qu\'on appelle la photosynthèse ! '
+            'Elle appartient à la grande famille des $family, un groupe de plantes qui partagent toutes des caractéristiques spéciales.',
         funFacts: [
-          'Les espèces de la famille des $family ont développé des stratégies de survie uniques au fil de millions d\'années d\'évolution.',
-          '$commonName joue un rôle essentiel dans son habitat en favorisant la pollinisation et la vitalité du sol.',
-          'Les botanistes analysent la morphologie florale des $family pour répertorier de nouvelles sous-espèces.',
+          'La famille des $family compte des milliers d\'espèces sur tous les continents de la Terre — une vraie famille mondiale ! 🌍',
+          '$commonName est adorée des pollinisateurs comme les abeilles et les papillons qui viennent y chercher du nectar et du pollen — de précieux repas qui font tourner tout l\'écosystème.',
+          'Des plantes comme $scientificName vivent sur notre planète depuis des millions d\'années — elles étaient là bien avant les humains !',
         ],
         observationTips: [
-          'Observez l\'agencement des feuilles (alternes ou opposées) le long de la tige principale.',
-          'Examinez la structure des pétales et la couleur du pollen pour affiner votre identification de terrain.',
+          'Approche-toi et compte les pétales — est-ce qu\'il y en a 4, 5 ou plus ? C\'est un super indice pour identifier les plantes !',
+          'Regarde très attentivement les feuilles : sont-elles lisses ou velues ? Poussent-elles face à face ou une par une ? Être détective de la nature, c\'est remarquer les petits détails !',
         ],
         safetyNote:
-            'Lavez-vous toujours les mains après manipulation et ne consommez jamais de végétaux sauvages sans confirmation experte.',
+            '🧤 Conseil d\'explorateur : lave toujours tes mains après avoir touché des plantes dehors, et ne goûte jamais une plante sauvage sans qu\'un adulte compétent dise que c\'est sans danger. Dans le doute, on admire — on ne croque pas !',
       );
     }
 
@@ -457,26 +505,26 @@ class DemoAiContentService implements AiContentService {
       return _curatedKnowledge[key]!;
     }
 
-    // Dynamic English fallback
+    // English dynamic fallback — fun, kid-friendly tone
     return AiContent(
       introduction:
-          '$commonName ($scientificName) is a fascinating member of the $family botanical family, '
-          'celebrated for its unique ecological adaptations.',
+          'Say hello to $commonName — a fascinating member of the $family family! 🌿 '
+          'This incredible plant has been living on Earth way longer than any of us, and it\'s full of amazing secrets waiting to be discovered.',
       description:
-          '$scientificName exhibits structural characteristics typical of $family. '
-          'It thrives in temperate environments where its foliage captures sunlight efficiently '
-          'and supports local pollinators.',
+          '$commonName (its science name is $scientificName) grows in gardens, parks, and wild places around the world. '
+          'Like all plants, it makes its own food using sunlight — a superpower called photosynthesis! '
+          'It belongs to the $family family, a big group of plants that all share special features.',
       funFacts: [
-        'Members of the $family family have developed specialized survival strategies over millions of years of evolution.',
-        '$commonName plays a key role in its native habitat by contributing to biodiversity and soil health.',
-        'Botanists use microscopic flower structures in $family to classify new related varieties.',
+        'The $family family has thousands of species found on every continent on Earth — a truly global plant family! 🌍',
+        '$commonName is loved by pollinators like bees and butterflies who visit for nectar and pollen — tiny meals that keep our whole food web alive.',
+        'Plants like $scientificName have been living on this planet for millions of years — they were here long before humans existed!',
       ],
       observationTips: [
-        'Observe the leaf arrangement (alternate vs. opposite) along the stem.',
-        'Look closely at petal symmetry and the color of pollen on the anthers.',
+        'Get up close and count the petals — most plants in the $family family have a special petal pattern. How many can you find?',
+        'Look very carefully at the leaves: are they smooth or fuzzy? Do they grow opposite each other or one by one? Being a nature detective is all about noticing the small stuff!',
       ],
       safetyNote:
-          'Always wash your hands after handling unfamiliar plants and never consume wild flora without verified expert guidance.',
+          '🧤 Explorer safety tip: Always wash your hands after touching plants outside, and never taste a wild plant unless a knowledgeable grown-up says it\'s safe. When in doubt, just admire — don\'t nibble!',
     );
   }
 }

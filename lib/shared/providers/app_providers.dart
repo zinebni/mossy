@@ -458,9 +458,11 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
 
     try {
       final total = await _pointsService.getTotalPoints(user.id);
+      // Always prefer the LARGER of service total vs persisted total to prevent reset.
+      final bestTotal = total > user.totalPoints ? total : user.totalPoints;
       final updated = user.copyWith(
-        totalPoints: total > 0 ? total : user.totalPoints,
-        explorerLevel: UserProfile.calculateLevel(total > 0 ? total : user.totalPoints),
+        totalPoints: bestTotal,
+        explorerLevel: UserProfile.calculateLevel(bestTotal),
       );
       if (mounted) {
         state = AsyncValue.data(updated);
