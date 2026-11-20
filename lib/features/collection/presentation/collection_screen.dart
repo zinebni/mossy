@@ -838,16 +838,18 @@ class _ListCard extends ConsumerWidget {
 }
 
 // ─── Discovery Detail Screen (Journal Entry) ─────────────────────────────────
-class _DiscoveryDetailPage extends ConsumerStatefulWidget {
+class DiscoveryDetailPage extends ConsumerStatefulWidget {
   final Discovery discovery;
 
-  const _DiscoveryDetailPage({required this.discovery});
+  const DiscoveryDetailPage({super.key, required this.discovery});
 
   @override
-  ConsumerState<_DiscoveryDetailPage> createState() => _DetailState();
+  ConsumerState<DiscoveryDetailPage> createState() => _DetailState();
 }
 
-class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
+typedef _DiscoveryDetailPage = DiscoveryDetailPage;
+
+class _DetailState extends ConsumerState<DiscoveryDetailPage> {
   late Discovery _d;
   late TextEditingController _notesCtrl;
   bool _isNotesSaved = false;

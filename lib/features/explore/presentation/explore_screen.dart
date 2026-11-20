@@ -772,6 +772,22 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
         currentLocale.languageCode,
       );
 
+      // 3b. Capture real device GPS coordinates (optional & non-blocking)
+      double? latitude;
+      double? longitude;
+      try {
+        final locService = ref.read(locationServiceProvider);
+        final pos = await locService.getCurrentPosition(
+          timeLimit: const Duration(seconds: 4),
+        );
+        if (pos != null) {
+          latitude = pos.latitude;
+          longitude = pos.longitude;
+        }
+      } catch (e) {
+        debugPrint('[Mossy] Non-fatal GPS location capture: $e');
+      }
+
       // 4. Construct complete Discovery entry
       if (mounted) {
         setState(() => _statusMessage = 'Recording in your Nature Journal...');
@@ -786,6 +802,8 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
         imagePath: persistentImagePath,
         discoveredAt: DateTime.now(),
         createdAt: DateTime.now(),
+        latitude: latitude,
+        longitude: longitude,
         identificationScore: candidate.score,
         aiContent: aiContent,
         // Gemini decides the tier; invalid/missing -> deterministic engine.
