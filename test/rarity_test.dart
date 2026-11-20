@@ -83,6 +83,36 @@ void main() {
       expect(old.rarity, isNotNull);
     });
 
+    test('showsBadge is true for all tiers including common', () {
+      for (final r in DiscoveryRarity.values) {
+        expect(r.showsBadge, isTrue, reason: '${r.name} should show badge');
+      }
+    });
+
+    test('RarityFrame provides borders and shadows for all tiers', () {
+      for (final r in DiscoveryRarity.values) {
+        expect(RarityFrame.border(r), isNotNull);
+        expect(RarityFrame.shadows(r), isNotEmpty);
+      }
+    });
+
+    testWidgets('RarityBadge renders emoji and label in compact and full mode', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              RarityBadge(rarity: DiscoveryRarity.common, isFr: false),
+              RarityBadge(rarity: DiscoveryRarity.legendary, isFr: false, compact: true),
+              RarityBadge(rarity: DiscoveryRarity.epic, isFr: true, showXp: true),
+            ],
+          ),
+        ),
+      ));
+      expect(find.textContaining('Common'), findsOneWidget);
+      expect(find.textContaining('Legendary'), findsOneWidget);
+      expect(find.textContaining('+45 XP'), findsOneWidget);
+    });
+
     testWidgets('celebration plays ~2.4s and removes itself', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Builder(

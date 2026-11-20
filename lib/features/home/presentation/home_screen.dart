@@ -14,6 +14,7 @@ import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/mascot/mascot_expression.dart';
 import '../../../shared/widgets/mascot/mascot_with_accessory.dart';
 import '../../../shared/widgets/mascot/mossy_mascot.dart';
+import '../../../shared/widgets/rarity_widgets.dart';
 import '../../adventures/presentation/widgets/challenge_detail_sheet.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -638,9 +639,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             final recent = discoveries.take(5).toList();
             return SizedBox(
-              height: 175,
+              height: 185,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
                 itemCount: recent.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
                 itemBuilder: (context, i) {
@@ -652,40 +654,76 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
+                        border: RarityFrame.border(d.rarity),
+                        boxShadow: RarityFrame.shadows(d.rarity, [
                           BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8, offset: const Offset(0, 2)),
-                        ],
+                        ]),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           ClipRRect(
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
                             child: SizedBox(
                               height: 95,
                               width: 135,
-                              child: d.imagePath.startsWith('http')
-                                  ? Image.network(
-                                      d.imagePath,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        color: AppColors.mintGreen,
-                                        child: const Icon(Icons.eco_rounded, color: AppColors.sageGreen),
-                                      ),
-                                    )
-                                  : Container(
-                                      color: AppColors.mintGreen,
-                                      child: const Icon(Icons.eco_rounded, color: AppColors.sageGreen),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  d.imagePath.startsWith('http')
+                                      ? Image.network(
+                                          d.imagePath,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            color: AppColors.mintGreen,
+                                            child: const Icon(Icons.eco_rounded, color: AppColors.sageGreen),
+                                          ),
+                                        )
+                                      : Container(
+                                          color: AppColors.mintGreen,
+                                          child: const Icon(Icons.eco_rounded, color: AppColors.sageGreen),
+                                        ),
+                                  // Top-left compact rarity badge
+                                  Positioned(
+                                    top: 6,
+                                    left: 6,
+                                    child: RarityBadge(
+                                      rarity: d.rarity,
+                                      compact: true,
+                                      isFr: isFr,
                                     ),
+                                  ),
+                                  // Bottom-right XP tag
+                                  Positioned(
+                                    bottom: 5,
+                                    right: 6,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withAlpha(140),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '+${d.rarity.totalPoints} XP',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  d.commonName,
+                                  d.commonName.isNotEmpty ? d.commonName : d.scientificName,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.darkGreen),

@@ -70,8 +70,9 @@ void main() {
         'fr',
       );
 
-      expect(roseContentFr.introduction, contains('Rosacées'));
+      expect(roseContentFr.introduction, contains('famille des roses'));
       expect(roseContentFr.funFacts.any((f) => f.contains('5 pétales')), isTrue);
+      expect(roseContentFr.safetyNote, contains('épines'));
       expect(roseContentFr.description.contains('photosynthèse'), isFalse);
       expect(roseContentFr.description.contains('pousse dans des jardins, des parcs et des espaces sauvages'), isFalse);
     });

@@ -587,17 +587,23 @@ class _GridCard extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  // Rarity badge (hidden for common finds to keep things clean)
-                  if (discovery.rarity.showsBadge)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: RarityBadge(
-                        rarity: discovery.rarity,
-                        isFr: Localizations.localeOf(context).languageCode == 'fr',
-                        compact: true,
-                      ),
+                  // Rarity badge (always visible, tap rare+ to trigger sparkles)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: RarityBadge(
+                      rarity: discovery.rarity,
+                      isFr: Localizations.localeOf(context).languageCode == 'fr',
+                      compact: true,
+                      onTap: discovery.rarity.isCelebratory
+                          ? () => RarityCelebration.show(
+                                context,
+                                discovery.rarity,
+                                isFr: Localizations.localeOf(context).languageCode == 'fr',
+                              )
+                          : null,
                     ),
+                  ),
                   // Confidence tag
                   Positioned(
                     bottom: 6,
@@ -610,7 +616,34 @@ class _GridCard extends ConsumerWidget {
                       ),
                       child: Text(
                         '$confidencePct%',
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                        style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                  // XP bonus chip
+                  Positioned(
+                    bottom: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(150),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.bolt_rounded, size: 11, color: Color(0xFFFFD54F)),
+                          const SizedBox(width: 1),
+                          Text(
+                            '+${discovery.rarity.totalPoints}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -677,7 +710,6 @@ class _ListCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dateFormat = DateFormat('MMM d, yyyy');
-    final confidencePct = (discovery.identificationScore * 100).toStringAsFixed(0);
 
     return GestureDetector(
       onTap: () {
@@ -727,19 +759,39 @@ class _ListCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      discovery.commonName.isNotEmpty ? discovery.commonName : discovery.scientificName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.darkGreen),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            discovery.commonName.isNotEmpty ? discovery.commonName : discovery.scientificName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.darkGreen),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        RarityBadge(
+                          rarity: discovery.rarity,
+                          isFr: Localizations.localeOf(context).languageCode == 'fr',
+                          compact: true,
+                          onTap: discovery.rarity.isCelebratory
+                              ? () => RarityCelebration.show(
+                                    context,
+                                    discovery.rarity,
+                                    isFr: Localizations.localeOf(context).languageCode == 'fr',
+                                  )
+                              : null,
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 1),
                     Text(
                       discovery.scientificName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontStyle: FontStyle.italic,
-                        fontSize: 12,
+                        fontSize: 11,
                         color: AppColors.secondaryText,
                       ),
                     ),
@@ -754,28 +806,30 @@ class _ListCard extends ConsumerWidget {
                           ),
                           child: Text(
                             discovery.family,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontSize: 10, color: AppColors.darkGreen, fontWeight: FontWeight.w700),
                           ),
                         ),
-                        if (discovery.rarity.showsBadge) ...[
-                          const SizedBox(width: 6),
-                          RarityBadge(
-                            rarity: discovery.rarity,
-                            isFr: Localizations.localeOf(context).languageCode == 'fr',
-                            compact: true,
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: discovery.rarity.softColor,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: discovery.rarity.color.withAlpha(80)),
                           ),
-                        ],
-                        const SizedBox(width: 8),
+                          child: Text(
+                            '+${discovery.rarity.totalPoints} XP',
+                            style: TextStyle(fontSize: 9.5, color: discovery.rarity.color, fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        const Spacer(),
                         Text(
-                          '$confidencePct% match',
-                          style: const TextStyle(fontSize: 11, color: AppColors.sageGreen, fontWeight: FontWeight.w600),
+                          dateFormat.format(discovery.discoveredAt),
+                          style: const TextStyle(fontSize: 10, color: AppColors.mutedText),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      dateFormat.format(discovery.discoveredAt),
-                      style: const TextStyle(fontSize: 10, color: AppColors.mutedText),
                     ),
                   ],
                 ),
@@ -1246,24 +1300,35 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
                         RarityBadge(
                           rarity: _d.rarity,
                           isFr: isFr,
-                          onTap: () => RarityCelebration.show(context, _d.rarity, isFr: isFr, force: true),
+                          onTap: _d.rarity.isCelebratory
+                              ? () => RarityCelebration.show(context, _d.rarity, isFr: isFr, force: true)
+                              : null,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '+${_d.rarity.totalPoints} XP',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: _d.rarity.color,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _d.rarity.color.withAlpha(25),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: _d.rarity.color.withAlpha(80)),
+                          ),
+                          child: Text(
+                            '+${_d.rarity.totalPoints} XP',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: _d.rarity.color,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        if (_d.rarity.isCelebratory)
                         GestureDetector(
                           onTap: () => RarityCelebration.show(context, _d.rarity, isFr: isFr, force: true),
                           child: Container(
@@ -1433,21 +1498,21 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
 
                 if (_d.aiContent != null) ...[
                   if (_d.aiContent!.introduction.isNotEmpty)
-                    _Section(isFr ? '✨ La magie de cette plante' : '✨ Meet This Plant', _d.aiContent!.introduction),
+                    _Section(isFr ? '✨ La vibe & le super-pouvoir' : '✨ Vibe & Superpower', _d.aiContent!.introduction),
 
                   if (_d.aiContent!.description.isNotEmpty)
-                    _Section(isFr ? '🌍 Où la trouver & ce qu\'elle fait' : '🌍 Where It Lives & What It Does', _d.aiContent!.description),
+                    _Section(isFr ? '🌍 Son histoire & où la débusquer' : '🌍 Story & Where It Lives', _d.aiContent!.description),
 
                   if (_d.funFacts.isNotEmpty)
                     _BulletSection(
-                      isFr ? '🤩 Le sais-tu ?' : '🤩 Cool Facts',
+                      isFr ? '🤩 Usages amusants & anecdotes' : '🤩 Fun Uses & Cool Facts',
                       _d.funFacts,
                       Icons.lightbulb_outline_rounded,
                     ),
 
                   if (_d.observationTips.isNotEmpty)
                     _BulletSection(
-                      isFr ? '🔍 Comment l\'observer & la cultiver' : '🔍 How to Spot or Grow It',
+                      isFr ? '🔍 Comment l\'observer & la chouchouter' : '🔍 How to Spot or Grow It',
                       _d.observationTips,
                       Icons.visibility_outlined,
                     ),

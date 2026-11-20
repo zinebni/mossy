@@ -61,8 +61,8 @@ enum DiscoveryRarity {
   /// Rare, epic and legendary finds trigger the celebration.
   bool get isCelebratory => index >= DiscoveryRarity.rare.index;
 
-  /// Uncommon and above get a visible badge (common stays clean).
-  bool get showsBadge => index >= DiscoveryRarity.uncommon.index;
+  /// Visible badge for all tiers so every discovery has its cute tier badge.
+  bool get showsBadge => true;
 
   String label(bool isFr) {
     switch (this) {
@@ -98,15 +98,15 @@ enum DiscoveryRarity {
   Color get color {
     switch (this) {
       case DiscoveryRarity.common:
-        return const Color(0xFF8A9A86);
+        return const Color(0xFF5F8D5A);
       case DiscoveryRarity.uncommon:
-        return const Color(0xFF4FA55A);
+        return const Color(0xFF388E3C);
       case DiscoveryRarity.rare:
-        return const Color(0xFF3A8DDE);
+        return const Color(0xFF1E88E5);
       case DiscoveryRarity.epic:
-        return const Color(0xFF9B5DE5);
+        return const Color(0xFF9C27B0);
       case DiscoveryRarity.legendary:
-        return const Color(0xFFF2A81D);
+        return const Color(0xFFFFA000);
     }
   }
 

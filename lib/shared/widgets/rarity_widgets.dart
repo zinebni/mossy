@@ -3,11 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/discovery_rarity.dart';
 
-/// Small pill showing a rarity tier (emoji + label).
+/// Standout, playful badge showing a rarity tier (emoji + label + optional sparkle/XP).
+/// Uses distinct gradient palettes per tier: friendly nature mint for Common,
+/// vibrant emerald for Uncommon, sapphire shimmer for Rare, amethyst for Epic,
+/// and radiant sun gold for Legendary.
 class RarityBadge extends StatelessWidget {
   final DiscoveryRarity rarity;
   final bool isFr;
   final bool compact;
+  final bool showXp;
   final VoidCallback? onTap;
 
   const RarityBadge({
@@ -15,56 +19,211 @@ class RarityBadge extends StatelessWidget {
     required this.rarity,
     this.isFr = false,
     this.compact = false,
+    this.showXp = false,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isCelebratory = rarity.isCelebratory;
+    final isLegendary = rarity == DiscoveryRarity.legendary;
+    final isEpic = rarity == DiscoveryRarity.epic;
+    final isRare = rarity == DiscoveryRarity.rare;
+    final isUncommon = rarity == DiscoveryRarity.uncommon;
+
+    final List<Color> bgGradient = isLegendary
+        ? [const Color(0xFFFFF6D8), const Color(0xFFFFE082)]
+        : isEpic
+            ? [const Color(0xFFF3E5F5), const Color(0xFFE1BEE7)]
+            : isRare
+                ? [const Color(0xFFE1F5FE), const Color(0xFFB3E5FC)]
+                : isUncommon
+                    ? [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)]
+                    : [const Color(0xFFF1F8F1), const Color(0xFFE2EFE2)];
+
+    final Color borderColor = isLegendary
+        ? const Color(0xFFFFA000)
+        : isEpic
+            ? const Color(0xFFAB47BC)
+            : isRare
+                ? const Color(0xFF29B6F6)
+                : isUncommon
+                    ? const Color(0xFF66BB6A)
+                    : const Color(0xFFA5C4A3);
+
+    final Color textColor = isLegendary
+        ? const Color(0xFFC47600)
+        : isEpic
+            ? const Color(0xFF7B1FA2)
+            : isRare
+                ? const Color(0xFF0277BD)
+                : isUncommon
+                    ? const Color(0xFF2E7D32)
+                    : const Color(0xFF4A6B46);
+
     final badge = Container(
-      padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 10, vertical: compact ? 2 : 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 7 : 11,
+        vertical: compact ? 3 : 5,
+      ),
       decoration: BoxDecoration(
-        color: rarity.softColor,
-        borderRadius: BorderRadius.circular(compact ? 8 : 12),
-        border: Border.all(color: rarity.color.withAlpha(150)),
+        gradient: LinearGradient(
+          colors: bgGradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(compact ? 9 : 14),
+        border: Border.all(
+          color: borderColor,
+          width: isCelebratory ? 1.4 : 1.0,
+        ),
+        boxShadow: [
+          if (isCelebratory)
+            BoxShadow(
+              color: borderColor.withAlpha(isLegendary ? 110 : 70),
+              blurRadius: compact ? 6 : 10,
+              offset: const Offset(0, 2),
+            ),
+          BoxShadow(
+            color: Colors.black.withAlpha(14),
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(rarity.emoji, style: TextStyle(fontSize: compact ? 10 : 13)),
-          SizedBox(width: compact ? 3 : 5),
+          Text(
+            rarity.emoji,
+            style: TextStyle(
+              fontSize: compact ? 11 : 14,
+              height: 1.1,
+            ),
+          ),
+          SizedBox(width: compact ? 4 : 6),
           Text(
             rarity.label(isFr),
             style: TextStyle(
-              fontSize: compact ? 10 : 12,
+              fontSize: compact ? 10.5 : 12.5,
               fontWeight: FontWeight.w800,
-              color: rarity.color,
+              letterSpacing: 0.2,
+              color: textColor,
             ),
           ),
+          if (isCelebratory) ...[
+            SizedBox(width: compact ? 2 : 4),
+            Text(
+              isLegendary ? '✨' : '★',
+              style: TextStyle(
+                fontSize: compact ? 9 : 11,
+                color: borderColor,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+          if (showXp) ...[
+            SizedBox(width: compact ? 4 : 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(180),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                '+${rarity.totalPoints} XP',
+                style: TextStyle(
+                  fontSize: compact ? 8.5 : 10.5,
+                  fontWeight: FontWeight.w900,
+                  color: textColor,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
+
     if (onTap == null) return badge;
-    return GestureDetector(onTap: onTap, child: badge);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: badge,
+    );
   }
 }
 
-/// Subtle border + glow for rare+ cards. Returns the base shadow only for
-/// lower tiers so the cozy look is preserved.
+/// Standout border + glow for discovery cards.
+/// Common has a soft, crisp natural border that keeps the card clean and friendly rather than dull.
+/// Higher tiers (rare, epic, legendary) receive vibrant colored glows and distinct borders.
 class RarityFrame {
   RarityFrame._();
 
   static Border? border(DiscoveryRarity r) {
-    if (!r.showsBadge) return null;
-    final width = r.index >= DiscoveryRarity.rare.index ? 1.6 : 1.0;
-    return Border.all(color: r.color.withAlpha(r.isCelebratory ? 200 : 110), width: width);
+    switch (r) {
+      case DiscoveryRarity.legendary:
+        return Border.all(color: const Color(0xFFFFA000), width: 2.0);
+      case DiscoveryRarity.epic:
+        return Border.all(color: const Color(0xFFAB47BC), width: 1.8);
+      case DiscoveryRarity.rare:
+        return Border.all(color: const Color(0xFF29B6F6), width: 1.6);
+      case DiscoveryRarity.uncommon:
+        return Border.all(color: const Color(0xFF66BB6A).withAlpha(160), width: 1.2);
+      case DiscoveryRarity.common:
+        return Border.all(color: const Color(0xFFA5C4A3).withAlpha(100), width: 1.0);
+    }
   }
 
-  static List<BoxShadow> shadows(DiscoveryRarity r, List<BoxShadow> base) {
-    if (!r.isCelebratory) return base;
-    return [
-      ...base,
-      BoxShadow(color: r.color.withAlpha(70), blurRadius: 14, spreadRadius: 0.5),
-    ];
+  static List<BoxShadow> shadows(DiscoveryRarity r, [List<BoxShadow> base = const []]) {
+    switch (r) {
+      case DiscoveryRarity.legendary:
+        return [
+          ...base,
+          BoxShadow(
+            color: const Color(0xFFFFA000).withAlpha(85),
+            blurRadius: 16,
+            spreadRadius: 1.0,
+            offset: const Offset(0, 3),
+          ),
+        ];
+      case DiscoveryRarity.epic:
+        return [
+          ...base,
+          BoxShadow(
+            color: const Color(0xFFAB47BC).withAlpha(75),
+            blurRadius: 14,
+            offset: const Offset(0, 3),
+          ),
+        ];
+      case DiscoveryRarity.rare:
+        return [
+          ...base,
+          BoxShadow(
+            color: const Color(0xFF29B6F6).withAlpha(65),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ];
+      case DiscoveryRarity.uncommon:
+        return [
+          ...base,
+          BoxShadow(
+            color: const Color(0xFF66BB6A).withAlpha(35),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ];
+      case DiscoveryRarity.common:
+        return base.isNotEmpty
+            ? base
+            : [
+                BoxShadow(
+                  color: const Color(0xFFA5C4A3).withAlpha(35),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ];
+    }
   }
 }
 
