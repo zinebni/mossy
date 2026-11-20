@@ -5,7 +5,7 @@ import { corsHeaders, handleCors, jsonResponse, errorResponse } from '../_shared
 import { requireAuth } from '../_shared/auth.ts';
 import { EducationalContent, SpeciesContentResponse } from '../_shared/types.ts';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent';
 const REQUEST_TIMEOUT_MS = 25000;
 
 function cleanJsonText(rawText: string): string {

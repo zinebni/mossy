@@ -44,6 +44,38 @@ void main() {
       expect(content.observationTips, isNotEmpty);
     });
 
+    test('DemoAiContentService produces species-specific family wisdom without generic boilerplate', () async {
+      final service = DemoAiContentService();
+
+      // Test dynamic mint family (Lamiaceae) plant not in curated list
+      final mintContent = await service.generateContent(
+        'Salvia officinalis',
+        'Common Sage',
+        'Lamiaceae',
+        'en',
+      );
+
+      expect(mintContent.introduction, contains('square stems'));
+      expect(mintContent.description, contains('Mediterranean'));
+      expect(mintContent.funFacts.any((f) => f.contains('herbal teas') || f.contains('aroma')), isTrue);
+      // Ensure rigid boilerplate strings are gone
+      expect(mintContent.description.contains('a superpower called photosynthesis'), isFalse);
+      expect(mintContent.description.contains('grows in gardens, parks, and wild places around the world'), isFalse);
+
+      // Test dynamic rose family (Rosaceae) plant in French
+      final roseContentFr = await service.generateContent(
+        'Prunus spinosa',
+        'Épine noire',
+        'Rosaceae',
+        'fr',
+      );
+
+      expect(roseContentFr.introduction, contains('Rosacées'));
+      expect(roseContentFr.funFacts.any((f) => f.contains('5 pétales')), isTrue);
+      expect(roseContentFr.description.contains('photosynthèse'), isFalse);
+      expect(roseContentFr.description.contains('pousse dans des jardins, des parcs et des espaces sauvages'), isFalse);
+    });
+
     test('DemoGardenService manages garden level and item unlock', () async {
       final service = DemoGardenService();
       const userId = 'test-gardener';

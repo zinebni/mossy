@@ -828,6 +828,60 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
     super.dispose();
   }
 
+  bool _isRefreshingWisdom = false;
+
+  Future<void> _refreshBotanicalWisdom(bool isFr) async {
+    if (_isRefreshingWisdom) return;
+    setState(() => _isRefreshingWisdom = true);
+    try {
+      final aiService = ref.read(aiContentServiceProvider);
+      final lang = isFr ? 'fr' : 'en';
+      final newAi = await aiService.generateContent(
+        _d.scientificName,
+        _d.commonName,
+        _d.family,
+        lang,
+      );
+      final updated = _d.copyWith(
+        aiContent: newAi,
+        rarity: newAi.rarity ?? _d.rarity,
+      );
+      await ref.read(discoveriesProvider.notifier).updateDiscovery(updated);
+      if (mounted) {
+        setState(() {
+          _d = updated;
+          _isRefreshingWisdom = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isFr
+                  ? '✨ Sagesse botanique actualisée !'
+                  : '✨ Botanical wisdom refreshed!',
+            ),
+            backgroundColor: AppColors.sageGreen,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isRefreshingWisdom = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isFr
+                  ? 'Impossible d\'actualiser la sagesse : $e'
+                  : 'Could not refresh wisdom: $e',
+            ),
+            backgroundColor: AppColors.warning,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   void _saveNotes() {
     final text = _notesCtrl.text.trim();
     final updated = _d.copyWith(personalNotes: text);
@@ -1337,6 +1391,46 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                 const SizedBox(height: 16),
 
                 // ─── 📖 Generative Botanical Lore ──────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.auto_awesome, color: AppColors.sageGreen, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          isFr ? 'Sagesse de Mossy' : 'Mossy Wisdom',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.darkGreen,
+                              ),
+                        ),
+                      ],
+                    ),
+                    TextButton.icon(
+                      onPressed: _isRefreshingWisdom ? null : () => _refreshBotanicalWisdom(isFr),
+                      icon: _isRefreshingWisdom
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.sageGreen),
+                            )
+                          : const Icon(Icons.refresh_rounded, size: 16, color: AppColors.sageGreen),
+                      label: Text(
+                        _isRefreshingWisdom
+                            ? (isFr ? 'Actualisation...' : 'Refreshing...')
+                            : (isFr ? 'Actualiser' : 'Refresh Lore'),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.sageGreen,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
                 if (_d.aiContent != null) ...[
                   if (_d.aiContent!.introduction.isNotEmpty)
                     _Section(isFr ? '✨ La magie de cette plante' : '✨ Meet This Plant', _d.aiContent!.introduction),

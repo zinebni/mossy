@@ -23,8 +23,9 @@ abstract class AiContentService {
 class GeminiAiContentService implements AiContentService {
   final String apiKey;
 
-  static const String _model = 'gemini-2.0-flash';
-  static const Duration _timeout = Duration(seconds: 30);
+  // Uses gemini-3.8-flash: official current model replacing retired gemini-2.0-flash
+  static const String _model = 'gemini-3.8-flash';
+  static const Duration _timeout = Duration(seconds: 35);
 
   GeminiAiContentService(this.apiKey);
 
@@ -46,46 +47,46 @@ class GeminiAiContentService implements AiContentService {
 
     final isFrench = language.startsWith('fr');
     final langNote = isFrench
-        ? 'RÈGLE IMPÉRATIVE DE LANGUE : Tu DOIS rédiger TOUTE ta réponse en FRANÇAIS, avec un ton chaleureux, ludique et accessible pour les enfants et les débutants. Explique les termes botaniques en langage courant dès qu\'ils apparaissent. Sois enthousiaste et fais ressentir la magie de la nature !'
-        : 'MANDATORY LANGUAGE RULE: You MUST write your ENTIRE response in English. Use a warm, fun, friendly tone — like an enthusiastic nature guide talking to curious kids and beginners. If you use a botanical term, explain it in simple everyday words right away.';
+        ? 'RÈGLE IMPÉRATIVE DE LANGUE : Tu DOIS rédiger TOUTE ta réponse en FRANÇAIS, avec un ton chaleureux, ludique et accessible pour des enfants de 10 ans et des explorateurs débutants. Explique les termes botaniques en mots simples dès qu\'ils apparaissent. Sois enthousiaste et fais ressentir la magie de la nature !'
+        : 'MANDATORY LANGUAGE RULE: You MUST write your ENTIRE response in English. Use a warm, fun, friendly tone — like an enthusiastic nature guide talking to curious kids (around 10 years old) and everyday beginners. If you use a botanical term, explain it in simple everyday words right away.';
 
     final prompt = '''
 You are Mossy, a super friendly and enthusiastic nature guide for the Mossy plant discovery app.
-Your job is to make plant discovery feel magical, fun, and exciting — like a nature adventure — for kids, families, and everyday explorers.
+Your mission is to share real, exciting botanical wisdom with curious kids, families, and beginner explorers.
 $langNote
 
-Write about the plant "$commonName" (scientific name: $scientificName, family: $family).
+Write about this specific plant:
+- Common Name: "$commonName"
+- Scientific Name: "$scientificName"
+- Botanical Family: "$family"
 
-TONE RULES (follow these strictly):
-- Write like a kind, fun teacher talking to a curious 10-year-old, NOT like a science textbook.
-- Use simple, vivid words. If you must use a scientific term, explain it right away in plain language.
-- Be enthusiastic! Use gentle exclamations and imagery. Keep sentences short and punchy.
-- Always frame edible/DIY ideas safely (e.g., "ask a grown-up first!"). No medical claims.
+CRITICAL RULES (FOLLOW STRICTLY - NO GENERIC BOILERPLATE):
+1. ZERO GENERIC FILLER: Never say generic phrases like "makes food through photosynthesis", "grows in gardens, parks and wild places around the world", or generic "feeds bees and butterflies". Every sentence must be 100% SPECIFIC to this exact species!
+2. WHERE IT LIVES: Name REAL geographical homes, native continents, specific countries, or distinct habitats where this exact plant grows (e.g., Mediterranean limestone hills, Amazon rainforest understory, damp European riverbanks, alpine rocky slopes).
+3. FUN & PRACTICAL USES: Share real, concrete ways humans enjoy or use this specific plant (e.g., herbal tea infusions, calming sleep sachets, soothing aloe gel, flower pressing/crafts, culinary seasoning, natural dyes, bouquet gifting). Always frame safely (e.g., "always ask a grown-up before brewing or picking!").
+4. COOL FACTS: 3 surprising, species-specific quirks, historical lore, records, or unusual adaptations unique to $scientificName.
+5. HOW TO SPOT OR GROW IT: 2 hands-on, practical clues kids can look for outside (leaf texture like fuzzy vs waxy, square stems, aroma when gently touched, flowers) and simple care tips (sunlight/water).
+6. SAFE EXPLORER TIP: A realistic safety note tailored specifically to $commonName (mention thorns, milky sap that can itch, bee visitors, or gentle reassurance if touch-safe).
+7. RARITY: EXACTLY one lowercase English word from: common, uncommon, rare, epic, legendary.
+8. RARITY REASON: ONE short, kid-friendly sentence in the target language explaining why it has this rarity in nature.
 
-Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this EXACT structure:
+Return ONLY a valid JSON object (no markdown fences, no extra text) with this EXACT structure:
 {
-  "introduction": "2 sentences: What is the coolest, most exciting thing about this plant? Hook the reader! Lead with wonder.",
-  "description": "2-3 sentences: Where does it live in the world? What does it look like? What does it do for nature (feed bees, make fruit, smell amazing)? Keep it visual and vivid.",
+  "introduction": "2 punchy sentences: Hook the kid explorer! What is the single coolest or most magical superpower of this specific plant?",
+  "description": "2-3 vivid sentences: Where does it live natively in the world? What does it look like, and how does it specifically interact with its environment?",
   "funFacts": [
-    "A surprising delight kids would love — pollinators, records, folklore, or quirky behaviour",
-    "A fun real-life use — tea, decoration, natural scent, herbal tradition — always framed safely (ask a grown-up!)",
-    "A wow nature fact: seed travel, age, speed of growth, or an amazing animal relationship"
+    "Fact 1: Surprising species-specific quirk, record, or historical nickname",
+    "Fact 2: Real-world practical use (tea, craft, scent, herbal tradition) with safe adult guidance",
+    "Fact 3: An amazing relationship with specific insects, animals, or weather adaptations"
   ],
   "observationTips": [
-    "Something a kid can actually DO outside: smell it, count petals, spot bugs on it, compare leaf shapes — concrete and hands-on",
-    "A second fun tip: how to find it in a garden or park, or a simple nature activity to try with it"
+    "Hands-on tip 1: Something concrete to touch, smell, count, or inspect (e.g. leaf veins, stem shape, flower petals)",
+    "Hands-on tip 2: Where to spot it or practical care tip (light, soil, water)"
   ],
-  "safetyNote": "1-2 friendly sentences. Is it safe to touch? Should you check with a grown-up before picking or tasting? Keep it warm and not scary.",
-  "rarity": "EXACTLY one lowercase English word from: common, uncommon, rare, epic, legendary (keep this value in English even when writing in French)",
-  "rarityReason": "ONE short, kid-friendly sentence explaining why it has that rarity (where you can find it and how often). Written in the response language."
+  "safetyNote": "1-2 friendly sentences tailored specifically to $commonName.",
+  "rarity": "common",
+  "rarityReason": "One kid-friendly sentence explaining this rarity."
 }
-
-RARITY GUIDE (be honest and conservative - most plants are common or uncommon):
-- common: seen almost every day on a walk, in lawns, gardens or parks.
-- uncommon: fairly widespread but not in every garden or park; a nice find.
-- rare: lives in specific habitats or regions; you have to go looking for it.
-- epic: scarce, protected, or only grows in special places; a very special find.
-- legendary: extremely rare, endangered, or almost never seen in the wild (use very sparingly, well under 2% of plants).
 ''';
 
     try {
@@ -115,10 +116,10 @@ RARITY GUIDE (be honest and conservative - most plants are common or uncommon):
       debugPrint('[Gemini] Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        return _parseResponse(response.body, scientificName, commonName, family);
+        return _parseResponse(response.body, scientificName, commonName, family, isFrench);
       } else {
         debugPrint('[Gemini] API error ${response.statusCode}: ${response.body}');
-        // On API error, fall back to demo service
+        // On API error, fall back to rich demo service
         return await DemoAiContentService()
             .generateContent(scientificName, commonName, family, language);
       }
@@ -134,6 +135,7 @@ RARITY GUIDE (be honest and conservative - most plants are common or uncommon):
     String scientificName,
     String commonName,
     String family,
+    bool isFrench,
   ) {
     try {
       final responseJson = jsonDecode(body) as Map<String, dynamic>;
@@ -170,7 +172,7 @@ RARITY GUIDE (be honest and conservative - most plants are common or uncommon):
 
       final reasonRaw = plantJson['rarityReason'] ?? plantJson['rarity_reason'];
       final reason = reasonRaw is String ? reasonRaw.trim() : '';
-      // Tolerant parse: bad casing/text -> null, handled by the caller's safe fallback.
+      // Tolerant parse: bad casing/text -> null, handled by caller's safe fallback.
       final rarity = DiscoveryRarity.tryParse(plantJson['rarity']);
       if (rarity == null) {
         debugPrint('[Gemini] Missing/invalid rarity "${plantJson['rarity']}" - caller will use safe fallback.');
@@ -186,8 +188,13 @@ RARITY GUIDE (be honest and conservative - most plants are common or uncommon):
         rarityReason: rarity != null && reason.isNotEmpty ? reason : null,
       );
     } catch (e) {
-      debugPrint('[Gemini] Failed to parse response: $e — using structured fallback');
-      return _buildFallback(scientificName, commonName, family);
+      debugPrint('[Gemini] Failed to parse response: $e — using botanical fallback');
+      return DemoAiContentService().generateBotanicalWisdomSync(
+        scientificName,
+        commonName,
+        family,
+        isFrench,
+      );
     }
   }
 
@@ -196,43 +203,16 @@ RARITY GUIDE (be honest and conservative - most plants are common or uncommon):
     if (value is List) return value.map((e) => e.toString()).toList();
     return const [];
   }
-
-  AiContent _buildFallback(
-    String scientificName,
-    String commonName,
-    String family,
-  ) {
-    return AiContent(
-      introduction:
-          'Say hello to $commonName — one of nature\'s coolest members of the $family family! '
-          'This plant has been living on Earth way longer than any of us, and it\'s full of amazing secrets waiting to be discovered.',
-      description:
-          'You can find $commonName (its science name is $scientificName) growing in gardens, parks, and wild places around the world. '
-          'It belongs to the $family family — a big group of plants that all share special features. '
-          'Like all plants, it makes its own food using sunlight — a superpower called photosynthesis!',
-      funFacts: [
-        'The $family family is one of the most widespread plant families on Earth, with thousands of species on every continent!',
-        '$commonName is loved by pollinators like bees and butterflies who visit it for nectar and pollen — tiny meals that keep our whole food web alive.',
-        'Plants like $scientificName have been living on this planet for millions of years — they were here long before humans existed!',
-      ],
-      observationTips: [
-        'Get up close and count the petals — most plants in the $family family have a special petal pattern. How many can you find?',
-        'Look very carefully at the leaves: are they smooth or fuzzy? Do they grow opposite each other or one by one? Being a nature detective is all about noticing the small stuff!',
-      ],
-      safetyNote:
-          '🧤 Explorer safety tip: Always wash your hands after touching plants outside, and never taste a wild plant unless a knowledgeable grown-up says it\'s safe. When in doubt, just admire — don\'t nibble!',
-    );
-  }
 }
 
 
 // ============================================================================
-// DEMO FALLBACK IMPLEMENTATION (used when no API key is present)
+// DEMO FALLBACK IMPLEMENTATION (used when no API key is present or offline)
 // ============================================================================
 
-/// Offline demo implementation with curated fun botanical knowledge for common plants.
-/// Tone: warm, playful, kid-friendly — not academic.
-/// Used as a fallback when no Gemini API key is configured.
+/// Offline demo implementation with curated fun botanical knowledge for common plants
+/// and a family-specific botanical wisdom generator.
+/// Tone: warm, playful, kid-friendly — never generic textbook filler.
 class DemoAiContentService implements AiContentService {
   static final Map<String, AiContent> _curatedKnowledge = {
     'bellis perennis': AiContent(
@@ -254,6 +234,8 @@ class DemoAiContentService implements AiContentService {
       ],
       safetyNote:
           '✅ Daisies are generally safe to touch. If you\'re curious about nibbling a petal, check with a grown-up first — especially if you have allergies, since daisies are related to ragweed.',
+      rarity: DiscoveryRarity.common,
+      rarityReason: 'Seen on lawns and grassy parks almost every sunny day!',
     ),
     'taraxacum officinale': AiContent(
       introduction:
@@ -365,6 +347,28 @@ class DemoAiContentService implements AiContentService {
       rarity: DiscoveryRarity.uncommon,
       rarityReason: 'Climbs on old stone walls and ancient trees in deep forests.',
     ),
+    'monstera deliciosa': AiContent(
+      introduction:
+          'Step into the rainforest with the Swiss Cheese Plant — famous for its giant glossy leaves with natural peek-a-boo holes! 🌿 '
+          'In the jungle, it climbs sky-high into tree canopies using thick rope-like aerial roots.',
+      description:
+          'Native to the warm tropical rainforests of southern Mexico and Central America, Monstera scrambles up towering trees to catch rays of sunlight. '
+          'Its unique leaf holes (called fenestrations) allow ferocious tropical rainstorms and winds to blow right through without tearing the leaves! '
+          'In its native wild habitat, it even produces an edible fruit that tastes like a blend of sweet pineapple and banana.',
+      funFacts: const [
+        'The name "deliciosa" comes from its wild tropical fruit, which tastes like sweet fruit salad when fully ripe! 🍍🍌',
+        'Its aerial roots act like living grappling ropes that drink raindrops and moisture straight out of misty jungle air.',
+        'Young Monstera leaves start completely solid and heart-shaped — the iconic splits only form as the plant gets older and reaches for brighter light!',
+      ],
+      observationTips: const [
+        'Inspect the leaf: are there closed holes inside the leaf, or deep cuts along the outer edge? Count how many "windows" you can find!',
+        'Gently touch the thick, glossy surface — notice how water droplets bead up and slide off like a waterproof raincoat.',
+      ],
+      safetyNote:
+          '🌿 Fun and safe to gently caress, but the leaves contain tiny calcium oxalate crystals that sting if chewed. Admire with your eyes, never nibble, and keep away from pets!',
+      rarity: DiscoveryRarity.rare,
+      rarityReason: 'A majestic tropical native, mostly spotted in cozy indoor jungles and botanical greenhouses!',
+    ),
   };
 
   static final Map<String, AiContent> _curatedKnowledgeFr = {
@@ -387,6 +391,8 @@ class DemoAiContentService implements AiContentService {
       ],
       safetyNote:
           '✅ La Pâquerette est généralement sans danger. Si tu veux goûter un pétale, demande d\'abord à un adulte — surtout si tu es allergique aux plantes de la famille des Astéracées.',
+      rarity: DiscoveryRarity.common,
+      rarityReason: 'Présente dans presque toutes les pelouses au premier rayon de soleil !',
     ),
     'taraxacum officinale': AiContent(
       introduction:
@@ -429,6 +435,8 @@ class DemoAiContentService implements AiContentService {
       ],
       safetyNote:
           '⚠️ Les cynorrhodons sont excellents pour les animaux, mais attention — les poils fins à l\'intérieur des baies grattent beaucoup ! Fais-les toujours cuire ou filtrer avec l\'aide d\'un adulte avant de les consommer.',
+      rarity: DiscoveryRarity.uncommon,
+      rarityReason: 'Pousse le long des haies champêtres et des sentiers forestiers.',
     ),
     'lavandula angustifolia': AiContent(
       introduction:
@@ -449,6 +457,8 @@ class DemoAiContentService implements AiContentService {
       ],
       safetyNote:
           '✅ La lavande est très sûre à toucher et à sentir. Si tu veux utiliser de l\'huile essentielle de lavande, demande à un adulte de la diluer d\'abord.',
+      rarity: DiscoveryRarity.rare,
+      rarityReason: 'Aime le plein soleil méditerranéen et les sols rocailleux bien drainés.',
     ),
     'trifolium repens': AiContent(
       introduction:
@@ -470,14 +480,14 @@ class DemoAiContentService implements AiContentService {
       safetyNote:
           '✅ Le Trèfle blanc est sans danger à toucher et même à grignoter une petite fleur ! Évite juste de manger de grandes quantités de feuilles crues. Lave-toi les mains après — et profite de la chasse !',
       rarity: DiscoveryRarity.common,
-      rarityReason: 'Très répandu dans l''herbe, mais le trèfle à 4 feuilles est légendaire !',
+      rarityReason: 'Très répandu dans l\'herbe, mais le trèfle à 4 feuilles est légendaire !',
     ),
     'hedera helix': AiContent(
       introduction:
           'Le Lierre, c\'est le grimpeur ultime de la nature — il escalade les murs, les arbres et les clôtures avec ses propres petites ventouses, sans clou ni corde ! 🧗 '
           'Et malgré son air envahissant, c\'est l\'une des plantes les plus précieuses pour la faune en hiver.',
       description:
-          'Le Lierre tapisse les sols de forêts, habille les vieux bâtiments et drapé les arbres dans les parcs et les bois de toute l\'Europe. '
+          'Le Lierre tapisse les sols de forêts, habille les vieux bâtiments et drape les arbres dans les parcs et les bois de toute l\'Europe. '
           'Il a deux formes de feuilles complètement différentes sur la même plante — étoilées et lobées en bas, lisses et ovales en haut où il fleurit. '
           'En fin d\'automne, le Lierre produit de petites fleurs qui sont un festin vital pour les papillons et les abeilles avant l\'hiver. 🦋',
       funFacts: const [
@@ -494,6 +504,28 @@ class DemoAiContentService implements AiContentService {
       rarity: DiscoveryRarity.uncommon,
       rarityReason: 'Grimpe le long des vieux murs et des grands arbres en forêt.',
     ),
+    'monstera deliciosa': AiContent(
+      introduction:
+          'Bienvenue dans la jungle avec le Faux Philodendron — célèbre pour ses feuilles géantes perforées comme des fenêtres naturelles ! 🌿 '
+          'Dans la forêt tropicale, il grimpe le long des arbres géants grâce à de solides racines aériennes en forme de cordes.',
+      description:
+          'Originaire des forêts chaudes et humides du Mexique et d\'Amérique centrale, le Monstera s\'élève vers la cime des arbres pour capter le soleil. '
+          'Les fentes et trous uniques dans ses feuilles (appelés fenestrations) permettent aux pluies diluviennes et aux bourrasques de passer sans déchirer la feuille ! '
+          'Dans son milieu sauvage d\'origine, il produit même un fruit savoureux au goût de salade d\'ananas et de banane.',
+      funFacts: const [
+        'Son nom "deliciosa" vient de son fruit tropical sauvage, délicieux comme une salade de fruits tropicaux quand il est parfaitement mûr ! 🍍🍌',
+        'Ses racines aériennes fonctionnent comme des cordes d\'escalade capables d\'avaler les gouttes de pluie et la brume de la jungle.',
+        'Les toutes jeunes feuilles de Monstera naissent entières et en forme de cœur — les fentes magiques n\'apparaissent qu\'en grandissant !',
+      ],
+      observationTips: const [
+        'Inspecte la feuille : y a-t-il des trous fermés à l\'intérieur ou des découpes jusqu\'au bord ? Compte combien de "fenêtres" tu vois !',
+        'Touche doucement sa surface luisante et épaisse : les gouttes d\'eau glissent dessus comme sur un ciré imperméable.',
+      ],
+      safetyNote:
+          '🌿 Très agréable à caresser délicatement, mais ses feuilles contiennent des micro-cristaux piquants si on les croque. On admire avec les yeux, on ne goûte jamais et on tient éloigné des animaux !',
+      rarity: DiscoveryRarity.rare,
+      rarityReason: 'Une liane tropicale spectaculaire, reine des serres et des intérieurs chaleureux !',
+    ),
   };
 
   @override
@@ -504,7 +536,7 @@ class DemoAiContentService implements AiContentService {
     String language,
   ) async {
     // Simulate brief AI generation latency
-    await Future.delayed(const Duration(milliseconds: 900));
+    await Future.delayed(const Duration(milliseconds: 300));
 
     final key = scientificName.trim().toLowerCase();
     final isFrench = language.startsWith('fr');
@@ -513,57 +545,410 @@ class DemoAiContentService implements AiContentService {
       if (_curatedKnowledgeFr.containsKey(key)) {
         return _curatedKnowledgeFr[key]!;
       }
-
-      // French dynamic fallback — fun, kid-friendly tone
-      return AiContent(
-        introduction:
-            'Découvre $commonName — un membre fascinant de la famille des $family ! 🌿 '
-            'Cette plante incroyable cache plein de secrets que les explorateurs de la nature adorent percer.',
-        description:
-            '$commonName (son nom scientifique est $scientificName) pousse dans des jardins, des parcs et des espaces sauvages à travers le monde. '
-            'Comme toutes les plantes, elle fabrique sa propre nourriture à partir de la lumière du soleil — un super-pouvoir qu\'on appelle la photosynthèse ! '
-            'Elle appartient à la grande famille des $family, un groupe de plantes qui partagent toutes des caractéristiques spéciales.',
-        funFacts: [
-          'La famille des $family compte des milliers d\'espèces sur tous les continents de la Terre — une vraie famille mondiale ! 🌍',
-          '$commonName est adorée des pollinisateurs comme les abeilles et les papillons qui viennent y chercher du nectar et du pollen — de précieux repas qui font tourner tout l\'écosystème.',
-          'Des plantes comme $scientificName vivent sur notre planète depuis des millions d\'années — elles étaient là bien avant les humains !',
-        ],
-        observationTips: [
-          'Approche-toi et compte les pétales — est-ce qu\'il y en a 4, 5 ou plus ? C\'est un super indice pour identifier les plantes !',
-          'Regarde très attentivement les feuilles : sont-elles lisses ou velues ? Poussent-elles face à face ou une par une ? Être détective de la nature, c\'est remarquer les petits détails !',
-        ],
-        safetyNote:
-            '🧤 Conseil d\'explorateur : lave toujours tes mains après avoir touché des plantes dehors, et ne goûte jamais une plante sauvage sans qu\'un adulte compétent dise que c\'est sans danger. Dans le doute, on admire — on ne croque pas !',
-        rarity: RarityEngine.assign(scientificName: scientificName, family: family),
-        rarityReason: 'Observée dans son milieu naturel par les explorateurs !',
-      );
+      return generateBotanicalWisdomSync(scientificName, commonName, family, true);
     }
 
     if (_curatedKnowledge.containsKey(key)) {
       return _curatedKnowledge[key]!;
     }
 
-    // English dynamic fallback — fun, kid-friendly tone
+    return generateBotanicalWisdomSync(scientificName, commonName, family, false);
+  }
+
+  /// Synchronous fallback wisdom generator tailored to the plant's family and genus.
+  /// Eliminates rigid boilerplate while preserving child-friendly wonder and accuracy.
+  AiContent generateBotanicalWisdomSync(
+    String scientificName,
+    String commonName,
+    String family,
+    bool isFrench,
+  ) {
+    final famLower = family.trim().toLowerCase();
+    final sciLower = scientificName.trim().toLowerCase();
+    final name = commonName.isNotEmpty ? commonName : scientificName;
+    final rarity = RarityEngine.assign(scientificName: scientificName, family: family);
+
+    // 1. LAMIACEAE (Mint / Lavender / Sage / Rosemary / Thyme family)
+    if (famLower.contains('lamiac') || famLower.contains('labiat') || sciLower.contains('mentha') || sciLower.contains('salvia')) {
+      if (isFrench) {
+        return AiContent(
+          introduction:
+              'Découvre $name — un trésor aromatique de la famille des Lamiacées ($family) aux tiges carrées magiques ! 🌿 '
+              'Fais-la rouler entre tes doigts : ses tiges ont 4 angles bien nets que les explorateurs reconnaissent au premier toucher.',
+          description:
+              'Originaire des coteaux ensoleillés de la Méditerranée et des collines rocailleuses, cette plante stocke des huiles précieuses dans de minuscules glandes sur ses feuilles. '
+              'Dès que le soleil la réchauffe, elle diffuse un parfum revigorant qui guide les bourdons et les abeilles vers ses fleurs étagées.',
+          funFacts: [
+            'Les tiges de la famille de la menthe sont toujours à section carrée avec quatre côtés plats — un secret botanique infaillible pour l\'identifier !',
+            'Depuis l\'Antiquité, on utilise ses feuilles pour préparer des infusions bienfaisantes, parfumer les plats et glisser des sachets odorants dans le linge.',
+            'Son parfum intense sert de bouclier naturel : il éloigne les insectes indésirables tout en attirant les insectes pollinisateurs amis ! 🐝',
+          ],
+          observationTips: [
+            'Frotte très délicatement une feuille entre ton pouce et ton index, puis sens tes doigts : tu libères instantanément ses huiles aromatiques !',
+            'Regarde de près l\'épi de fleurs : les petites fleurs à deux lèvres forment des couronnes empilées étage par étage.',
+          ],
+          safetyNote:
+              '✅ Douce et sans danger à caresser ! Si tu veux préparer une tisane ou cuisiner avec ses feuilles, demande toujours l\'aide d\'un adulte.',
+          rarity: rarity,
+          rarityReason: 'Précieuse plante aromatique qui aime la chaleur et les sols bien drainés.',
+        );
+      }
+      return AiContent(
+        introduction:
+            'Say hello to $name — an aromatic wonder from the mint family ($family) with square stems you can feel! 🌿 '
+            'Roll the stem gently between your fingers: it has four distinct flat corners that nature detectives recognize instantly.',
+        description:
+            'Native to sunny Mediterranean hillsides and rocky slopes, this plant stores fragrant essential oils in microscopic glands across its foliage. '
+            'When warmed by the afternoon sun, it fills the air with a soothing aroma that guides bees and butterflies straight to its stacked flower spikes.',
+        funFacts: [
+          'The square stem with four flat sides is the secret trademark of the Lamiaceae family — feel it between two fingers to test it yourself!',
+          'People have treasured leaves from this family for thousands of years to brew relaxing herbal teas, season comforting meals, and make fragrant drawer sachets.',
+          'The rich aroma is the plant\'s natural armor: it repels hungry garden pests while welcoming friendly pollinating bees! 🐝',
+        ],
+        observationTips: [
+          'Gently rub a leaf between your thumb and index finger, then smell your fingertips — you\'ll release a burst of natural aromatic oils!',
+          'Look closely at the flower spike: the two-lipped blossoms are arranged in neat stacked rings called whorls.',
+        ],
+        safetyNote:
+            '✅ Very gentle and safe to touch! If you want to brew herbal tea or harvest leaves for cooking, always ask a grown-up to help.',
+        rarity: rarity,
+        rarityReason: 'Loves sunny spots and well-drained soil, making it a delightful fragrant find.',
+      );
+    }
+
+    // 2. ASTERACEAE (Daisy / Sunflower / Dandelion / Thistle family)
+    if (famLower.contains('asterac') || famLower.contains('composit')) {
+      if (isFrench) {
+        return AiContent(
+          introduction:
+              'Voici $name — un champion du travail d\'équipe de la famille des Astéracées ($family) ! 🌼 '
+              'Ce que tu prends pour une seule fleur est en réalité une vraie métropole de dizaines de minuscules fleurettes réunies.',
+          description:
+              'S\'épanouissant dans les prairies ouvertes et les clairières baignées de lumière, cette fleur est dite "composée". '
+              'Chaque faux pétale sur les bords est une fleurette à part entière, et le cœur central en regroupe des dizaines d\'autres qui s\'ouvrent progressivement pour régaler les papillons.',
+          funFacts: [
+            'Le cœur floral fonctionne comme une horloge solaire : ses fleurettes s\'ouvrent en spirale géométrique parfaite depuis l\'extérieur vers le centre !',
+            'Beaucoup de ces fleurs suivent la course du soleil au cours de la journée pour garder leur pollen bien tiède.',
+            'On adore presser ces jolies fleurs dans des vieux livres pour confectionner des marque-pages ou tresser des couronnes de fées.',
+          ],
+          observationTips: [
+            'Prends une loupe et observe le disque central : vois-tu les dizaines de minuscules corolles en forme d\'étoiles ?',
+            'Surveille la fleur au crépuscule ou quand un nuage d\'orage approche : observe si ses pétales se referment pour protéger son cœur !',
+          ],
+          safetyNote:
+              '✅ Douce et amusante à admirer. Lave-toi toujours les mains après tes expéditions en plein air et demande un coup de main pour les bricolages nature.',
+          rarity: rarity,
+          rarityReason: 'Fleurit joyeusement dans les espaces herbeux et les prairies ensoleillées.',
+        );
+      }
+      return AiContent(
+        introduction:
+            'Meet $name — a master of teamwork from the daisy family ($family)! 🌼 '
+            'What looks like one single flower head is actually a bustling community of dozens of tiny flowers working together as a team.',
+        description:
+            'Thriving in sunny open meadows and grassy clearings, this plant produces composite blooms. '
+            'The colorful outer "petals" are individual strap-shaped florets, while the disk in the middle holds a crowd of mini tube-shaped flowers bursting with sweet nectar for visiting bees.',
+        funFacts: [
+          'The center disk opens in a mesmerizing mathematical spiral (the Fibonacci sequence!) from the outside edges inward to the core.',
+          'Many blooms in this family track the sun from east to west throughout the day like living solar dishes to keep pollinator visitors cozy.',
+          'Generations of nature lovers have pressed these cheerful blossoms inside heavy books to make greeting cards and pressed flower bookmarks.',
+        ],
+        observationTips: [
+          'Use a magnifying glass to inspect the center disk: count how many tiny star-shaped flower tubes have already opened!',
+          'Check back in the evening: does the flower curl its petals closed to sleep through the night? Note the time in your explorer log!',
+        ],
+        safetyNote:
+            '✅ Safe and friendly to explore! Always wash your hands after outdoor adventures, and ask a grown-up before picking wild flowers.',
+        rarity: rarity,
+        rarityReason: 'A cheerful sun-loving bloom often spotted in grassy meadows and fields.',
+      );
+    }
+
+    // 3. ROSACEAE (Rose / Apple / Strawberry / Blackberry family)
+    if (famLower.contains('rosac')) {
+      if (isFrench) {
+        return AiContent(
+          introduction:
+              'Découvre $name — un membre enchanteur de la famille des Rosacées ($family) réputé pour ses fleurs délicates et ses fruits savoureux ! 🌹 '
+              'C\'est la célèbre famille botanique qui nous offre les fraises des bois, les pommes et les églantines.',
+          description:
+              'S\'épanouissant le long des lisières de forêts et des haies champêtres, cette plante associe des fleurs à 5 pétales disposés en étoile et des tiges vigoureuses. '
+              'Après la floraison, ses fleurs se métamorphosent souvent en baies ou en fruits charnus riches en vitamines que les oiseaux adorent picorer en automne.',
+          funFacts: [
+            'Presque toutes les fleurs sauvages de la famille des roses possèdent exactement 5 pétales disposés en étoile harmonieuse !',
+            'Ses fruits (comme les cynorrhodons ou les baies) servaient traditionnellement à préparer des sirops vitaminés et des gelées parfumées.',
+            'Ses tiges développent souvent de petits aiguillons incurvés qui lui permettent de grimper vers la lumière et d\'éloigner les herbivores.',
+          ],
+          observationTips: [
+            'Compte les pétales d\'une fleur bien éclose : tu devrais en compter exactement 5 ! Regarde aussi les petites feuilles vertes sous la fleur (les sépales).',
+            'Observe attentivement la tige sans appuyer fort : regarde si les aiguillons sont droits ou courbés comme des crochets d\'escalade.',
+          ],
+          safetyNote:
+              '⚠️ Attention aux petites épines sur les tiges ! On observe avec douceur et on demande toujours l\'accord d\'un adulte avant de cueillir ou goûter des baies sauvages.',
+          rarity: rarity,
+          rarityReason: 'Embellit les haies de campagne et les sous-bois éclairés.',
+        );
+      }
+      return AiContent(
+        introduction:
+            'Say hello to $name — a charming member of the rose family ($family) celebrated for its five-petaled blossoms and sweet fruits! 🌹 '
+            'This famous plant family gives us some of the world\'s favorite treats, from wild strawberries to crisp garden apples.',
+        description:
+            'Thriving along woodland borders and countryside hedgerows, this plant combines star-shaped five-petaled flowers with resilient climbing stems. '
+            'Once pollinated by buzzing bumblebees, its blossoms transform into vitamin-packed fruits or hips that provide vital nourishment for songbirds in autumn.',
+        funFacts: [
+          'Wild flowers in the rose family almost always show off exactly 5 delicate petals arranged like a neat little botanical star!',
+          'Traditional country herbalists harvested autumn rosehips and wild berries to simmer into delicious syrups packed with vitamin C.',
+          'Curved prickles along the stems work like natural mountaineering grappling hooks, helping the plant scramble up toward the sunshine.',
+        ],
+        observationTips: [
+          'Count the petals on an open flower: do you find 5 delicate petals? Check underneath for the star of green sepals supporting them!',
+          'Carefully trace the stems with your eyes to see how the protective prickles point downwards to anchor the climbing branches.',
+        ],
+        safetyNote:
+            '⚠️ Watch out for sharp prickles or thorns! Admire gently with your eyes, and always ask a grown-up before picking or tasting wild berries.',
+        rarity: rarity,
+        rarityReason: 'Scrambles along countryside hedgerows and sunny woodland edges.',
+      );
+    }
+
+    // 4. ARACEAE (Aroid / Monstera / Philodendron / Pothos family)
+    if (famLower.contains('arac') || sciLower.contains('monstera') || sciLower.contains('philodendron')) {
+      if (isFrench) {
+        return AiContent(
+          introduction:
+              'Bienvenue dans la jungle avec $name — une fascinante liane tropicale de la famille des Aracées ($family) ! 🌴 '
+              'Dans les forêts chaudes, elle escalade les troncs géants grâce à de solides racines aériennes.',
+          description:
+              'Originaire des forêts tropicales humides d\'Amérique centrale et du Sud, cette plante développe de grandes feuilles lustrées adaptées à la pénombre de la canopée. '
+              'Ses racines aériennes fonctionnent comme des cordes d\'escalade qui captent l\'eau de pluie et l\'humidité brumeuse directement dans l\'air.',
+          funFacts: [
+            'Les découpes et trous dans ses feuilles permettent aux fortes pluies et aux bourrasques tropicales de passer au travers sans déchirer le limbe !',
+            'Ses racines aériennes cherchent d\'abord l\'obscurité pour trouver le tronc d\'un arbre hôte, avant de grimper vers la cime lumineuse.',
+            'C\'est l\'une des plantes compagnes les plus choyées en intérieur pour purifier l\'air et apporter une touche d\'aventure dans la maison.',
+          ],
+          observationTips: [
+            'Observe le contour des feuilles : note si elles sont entières en cœur ou découpées en lanières graphiques.',
+            'Dépoussière délicatement la surface avec un chiffon doux humide pour admirer son éclat vert profond.',
+          ],
+          safetyNote:
+              '🌿 Agréable à caresser doucement, mais les feuilles contiennent des micro-cristaux qui piquent si on les croque. On admire avec les yeux, on ne goûte jamais et on tient éloigné des animaux !',
+          rarity: rarity,
+          rarityReason: 'Plante tropicale majestueuse qui recrée une ambiance de forêt tropicale.',
+        );
+      }
+      return AiContent(
+        introduction:
+            'Step into the jungle with $name — a fascinating tropical climber from the arum family ($family)! 🌴 '
+            'In humid tropical forests, it scales towering tree trunks using thick rope-like aerial roots.',
+        description:
+            'Native to the warm, shaded understory of Central and South American rainforests, this plant produces broad glossy foliage adapted to filtered jungle light. '
+            'Its strong aerial roots act like living moisture cables, absorbing raindrops and morning mist straight from the humid tropical breeze.',
+        funFacts: [
+          'Natural splits and windows in the leaves allow fierce tropical rainstorms and wind gusts to blow right through without tearing the foliage!',
+          'Young aerial roots actively seek darkness (negative phototropism) to locate a solid tree trunk, then climb upward toward the bright canopy above.',
+          'It is one of the world\'s most beloved indoor green companions, bringing tropical vibes and fresh air into cozy homes and schools.',
+        ],
+        observationTips: [
+          'Examine the leaf margins: are the edges smooth and heart-shaped, or deeply split into artistic jungle ribbons?',
+          'Wipe the broad glossy surface gently with a damp cloth to help the leaf catch every beam of indoor daylight.',
+        ],
+        safetyNote:
+            '🌿 Safe and enjoyable to gently stroke, but the foliage contains natural oxalate crystals that sting if chewed. Strictly admire — never nibble, and keep away from pets!',
+        rarity: rarity,
+        rarityReason: 'A striking tropical specimen that thrives in warm, bright indoor spaces.',
+      );
+    }
+
+    // 5. FABACEAE / LEGUMINOSAE (Pea / Bean / Clover / Wisteria family)
+    if (famLower.contains('fabac') || famLower.contains('legumin') || sciLower.contains('trifolium')) {
+      if (isFrench) {
+        return AiContent(
+          introduction:
+              'Voici $name — une super-héroïne du sol de la famille des Fabacées ($family) ! 🍀 '
+              'Elle possède le pouvoir secret d\'enrichir la terre tout en nourrissant les abeilles avec ses fleurs en forme de papillon.',
+          description:
+              'Poussant dans les prairies et les collines tempérées du monde entier, cette plante coopère avec de minuscules bactéries amies (les Rhizobiums) logées dans ses racines. '
+              'Ensemble, elles captent l\'azote de l\'air pour fabriquer un engrais naturel gratuit qui nourrit toutes les plantes voisines.',
+          funFacts: [
+            'Ses fleurs ont une forme poétique de papillon avec un grand pétale dressé (l\'étendard) et deux pétales latéraux (les ailes) !',
+            'Ses graines se développent dans des gousses qui s\'enroulent et sautent avec un petit "pop" sec pour catapulter les graines au loin !',
+            'C\'est la même grande famille bienfaisante qui nous donne les petits pois croquants, les lentilles et les haricots du potager.',
+          ],
+          observationTips: [
+            'Regarde la fleur de très près : tu distingues la forme d\'ailes de papillon prêtes à s\'envoler ?',
+            'Observe les feuilles : sont-elles découpées en 3 folioles (comme le trèfle) ou en rangées soignées le long de la tige ?',
+          ],
+          safetyNote:
+              '✅ Douce et sans danger à manipuler. Demande toujours l\'avis d\'un adulte avant de goûter des pois ou des gousses du jardin.',
+          rarity: rarity,
+          rarityReason: 'Pousse dans les prairies fraîches et nourrit naturellement la terre.',
+        );
+      }
+      return AiContent(
+        introduction:
+            'Meet $name — a true soil superhero from the legume family ($family)! 🍀 '
+            'It has the secret power of healing the soil while feeding hungry bees with its butterfly-shaped blossoms.',
+        description:
+            'Spreading through sunny meadows and gentle slopes worldwide, this plant works in partnership with friendly underground root bacteria called Rhizobia. '
+            'Together, they pull nitrogen out of the air to make natural fertilizer that boosts and nourishes the surrounding earth.',
+        funFacts: [
+          'Its blossoms are shaped like tiny landing butterflies, featuring an upright banner petal at the top and two wing petals at the sides!',
+          'When seed pods dry in the sunshine, they twist tightly and pop open with a snap, catapulting seeds across the meadow like miniature cannons!',
+          'This generous botanical family gives us favorite healthy kitchen treats, including sweet garden peas, crunchy beans, and lentils.',
+        ],
+        observationTips: [
+          'Examine a blossom up close: can you spot the butterfly "wings" and the central "boat keel" where nectar hides?',
+          'Check the foliage: are the leaves split into three sweet leaflets (trifoliate) or arranged in neat feathery ladders?',
+        ],
+        safetyNote:
+            '✅ Gentle and safe to handle! Always consult a knowledgeable grown-up before harvesting or tasting garden peas and pods.',
+        rarity: rarity,
+        rarityReason: 'Enriches meadow soil and provides sweet nectar for wild bees.',
+      );
+    }
+
+    // 6. PINACEAE / CUPRESSACEAE / CONIFERS (Pine, Fir, Spruce, Cypress)
+    if (famLower.contains('pinac') || famLower.contains('cupress') || sciLower.contains('pinus')) {
+      if (isFrench) {
+        return AiContent(
+          introduction:
+              'Découvre $name — un fier géant de la forêt de la famille des Conifères ($family) ! 🌲 '
+              'Il brave la neige, le vent et le froid hivernal grâce à ses aiguilles cireuses persistantes et sa résine parfumée.',
+          description:
+              'Vivant sur les crêtes rocheuses et dans les grandes forêts du Nord, cet arbre remplace les larges feuilles fragiles par des aiguilles couvertes d\'une cire protectrice. '
+              'Ses graines grandissent à l\'abri d\'écailles solides formant des pommes de pin qui s\'ouvrent et se ferment selon la météo.',
+          funFacts: [
+            'Les pommes de pin sont de véritables baromètres naturels : elles se ferment hermétiquement sous la pluie et s\'ouvrent au soleil sec pour libérer leurs graines ailées !',
+            'Sa résine dorée et collante agit comme un pansement magique pour cicatriser l\'écorce de l\'arbre s\'il est égratigné par le vent.',
+            'L\'odeur fraîche et boisée de ses aiguilles provient d\'huiles essentielles appelées terpènes, qui purifient l\'air de la forêt.',
+          ],
+          observationTips: [
+            'Respire tes doigts après avoir effleuré un rameau d\'aiguilles : cette bonne odeur boisée rappelle les balades en forêt en montagne !',
+            'Ramasse une pomme de pin au sol : est-elle grande ouverte (signe d\'air sec) ou toute resserrée (signe d\'humidité) ?',
+          ],
+          safetyNote:
+              '🌲 Attention à la résine collante sur les doigts et aux pointes d\'aiguilles ! Manipule les rameaux avec douceur.',
+          rarity: rarity,
+          rarityReason: 'Grand protecteur de la forêt qui garde sa belle couleur verte tout l\'hiver.',
+        );
+      }
+      return AiContent(
+        introduction:
+            'Discover $name — an evergreen forest sentinel from the conifer family ($family)! 🌲 '
+            'It braves freezing snow, howling winds, and winter frost with tough waxy needles and aromatic protective resin.',
+        description:
+            'Rooted across brisk northern woodlands and rocky mountain ridges, this tree swaps fragile broad leaves for slender needles coated in waterproof wax. '
+            'Its seeds stay protected inside woody cones that act like clever botanical weather forecast stations.',
+        funFacts: [
+          'Pinecones are natural weather forecasters: they seal tightly shut when it rains and pop wide open on dry sunny days so breezes carry winged seeds away!',
+          'Golden sticky tree resin acts like a healing liquid bandage, sealing cracks and protecting the trunk against invading fungi and bugs.',
+          'The invigorating forest fragrance comes from natural aromatic compounds called terpenes, which help clean the surrounding woodland air.',
+        ],
+        observationTips: [
+          'Sniff your fingers after gently brushing the needles: enjoy that crisp, refreshing evergreen aroma!',
+          'Look for fallen cones beneath the branches: are the woody scales closed tight (damp weather) or flared wide open (dry weather)?',
+        ],
+        safetyNote:
+            '🌲 Watch out for sticky resin that clings to fingers and sharp needle tips; explore branches and cones with gentle hands.',
+        rarity: rarity,
+        rarityReason: 'An enduring evergreen that keeps mountain forests vibrant and green all year.',
+      );
+    }
+
+    // 7. CACTACEAE / CRASSULACEAE (Cacti & Succulents)
+    if (famLower.contains('cact') || famLower.contains('crassul') || sciLower.contains('aloe') || sciLower.contains('sedum')) {
+      if (isFrench) {
+        return AiContent(
+          introduction:
+              'Voici $name — un champion des terres arides de la famille des Succulentes ($family) ! 🏜️ '
+              'Véritable réservoir vivant, cette plante stocke sa propre réserve d\'eau dans ses feuilles charnues pour survivre des mois sans pluie.',
+          description:
+              'Évoluant sur les rochers ensoleillés et les pentes désertiques, elle possède un super-pouvoir d\'économie d\'eau. '
+              'Elle garde ses pores fermés pendant la chaleur brûlante du jour pour ne rien évaporer, et respire tranquillement la nuit à la fraîche.',
+          funFacts: [
+            'Le voile poudré et bleuté sur ses feuilles s\'appelle la pruine : c\'est une crème solaire minérale 100% naturelle fabriquée par la plante !',
+            'Une simple feuille tombée sur de la terre peut fabriquer ses propres racines et donner naissance à un bébé plante tout neuf !',
+            'Certaines espèces comme l\'Aloe vera renferment un gel apaisant utilisé depuis des millénaires pour rafraîchir la peau après le soleil.',
+          ],
+          observationTips: [
+            'Effleure très délicatement une feuille charnue : sens comme elle est ferme et gonflée d\'eau de réserve comme une gourde végétale.',
+            'Observe ses reflets de couleur : vert d\'eau, bleuté ou teinté de rose sous le soleil éclatant.',
+          ],
+          safetyNote:
+              '🏜️ Très douce pour les succulentes à feuilles lisses ! Pour les cactus à piquants, admire strictement avec les yeux pour éviter les épines.',
+          rarity: rarity,
+          rarityReason: 'Un champion de la survie qui stocke l\'eau comme un trésor.',
+        );
+      }
+      return AiContent(
+        introduction:
+            'Meet $name — a master desert survivor from the succulent family ($family)! 🏜️ '
+            'A living water canteen, this incredible plant stores its own private moisture reservoir inside plump, fleshy leaves to thrive for months without rain.',
+        description:
+            'Thriving across sun-drenched canyon rocks and arid slopes, it uses a smart water-saving superpower. '
+            'It keeps its pores tightly sealed during the blazing daytime heat to avoid losing moisture, breathing peacefully in the cool desert night.',
+        funFacts: [
+          'The powdery bluish-white coating on the leaves is called farina: it works like natural mineral sunscreen to reflect scorching UV rays!',
+          'A single healthy succulent leaf resting on moist soil can sprout fresh roots and grow into an entirely new baby plant! 🌱',
+          'Beloved species like Aloe vera store a cooling clear gel inside their leaves that people have used for thousands of years to soothe sun-warmed skin.',
+        ],
+        observationTips: [
+          'Very gently touch a plump leaf: feel how firm and juicy it is compared to a paper-thin regular garden leaf.',
+          'Notice how water droplets bead up on the waxy surface and roll off like little crystal spheres.',
+        ],
+        safetyNote:
+            '🏜️ Smooth succulents are gentle and safe to touch! If exploring a spiny cactus, admire strictly with your eyes to avoid prickly spines.',
+        rarity: rarity,
+        rarityReason: 'A sun-loving survivor with plump leaves designed to store precious water.',
+      );
+    }
+
+    // 8. GENERAL DYNAMIC FALLBACK (Tailored to any other family without generic boilerplate)
+    if (isFrench) {
+      return AiContent(
+        introduction:
+            'Fais la connaissance de $name — un spécimen captivant de la famille des $family ($scientificName) ! 🌿 '
+            'Chaque détail de sa silhouette est une astuce ingénieuse développée au fil du temps pour s\'épanouir dans son milieu.',
+        description:
+            'Évoluant dans son habitat naturel caractéristique, cette plante déploie des feuilles et des fleurs adaptées aux caprices de la météo locale. '
+            'Elle offre un havre précieux pour la petite faune du quartier, servant d\'abri pour les coccinelles et de piste d\'envol pour les insectes ailés.',
+        funFacts: [
+          'Les botanistes reconnaissent les $family en examinant le tracé des nervures sur les feuilles et la symétrie harmonieuse de leurs pétales.',
+          'Beaucoup d\'espèces de ce groupe sont choyées par les jardiniers pour créer de superbes bouquets séchés ou des coins nature au jardin.',
+          'La manière dont ses feuilles s\'attachent à la tige (face à face ou décalées) est comme une empreinte digitale végétale unique !',
+        ],
+        observationTips: [
+          'Effleure délicatement une feuille : est-elle lisse, veloutée comme du duvet ou un peu cireuse ?',
+          'Compte les pétales d\'une fleur éclose et esquisse la forme de sa feuille dans ton carnet d\'explorateur de la nature !',
+        ],
+        safetyNote:
+            '🧤 Conseil d\'explorateur : lave-toi toujours les mains après tes sorties nature et demande l\'aide d\'un adulte avant de cueillir des plantes sauvages.',
+        rarity: rarity,
+        rarityReason: 'Observée dans son milieu naturel par les explorateurs attentifs !',
+      );
+    }
+
     return AiContent(
       introduction:
-          'Say hello to $commonName — a fascinating member of the $family family! 🌿 '
-          'This incredible plant has been living on Earth way longer than any of us, and it\'s full of amazing secrets waiting to be discovered.',
+          'Say hello to $name — a captivating discovery from the $family family ($scientificName)! 🌿 '
+          'Every curve of its leaves and stem is a clever design evolved over generations to thrive in its outdoor home.',
       description:
-          '$commonName (its science name is $scientificName) grows in gardens, parks, and wild places around the world. '
-          'Like all plants, it makes its own food using sunlight — a superpower called photosynthesis! '
-          'It belongs to the $family family, a big group of plants that all share special features.',
+          'Thriving in its native natural habitat, this plant unfurls distinctive foliage and blossoms tailored to its local climate. '
+          'It provides essential shelter and nectar for neighborhood wildlife, serving as a cozy rest stop for ladybugs and wandering pollinators.',
       funFacts: [
-        'The $family family has thousands of species found on every continent on Earth — a truly global plant family! 🌍',
-        '$commonName is loved by pollinators like bees and butterflies who visit for nectar and pollen — tiny meals that keep our whole food web alive.',
-        'Plants like $scientificName have been living on this planet for millions of years — they were here long before humans existed!',
+        'Botanists identify members of the $family family by studying the intricate vein patterns across the leaves and the symmetry of their petals.',
+        'Many species in this botanical circle have been treasured across generations for colorful garden borders, pressed-flower crafts, and bouquet gifting.',
+        'The way its leaves attach along the stem — either alternating or in opposite pairs — is like a unique botanical fingerprint!',
       ],
       observationTips: [
-        'Get up close and count the petals — most plants in the $family family have a special petal pattern. How many can you find?',
-        'Look very carefully at the leaves: are they smooth or fuzzy? Do they grow opposite each other or one by one? Being a nature detective is all about noticing the small stuff!',
+        'Gently stroke a leaf with your fingertip: is the texture glossy, fuzzy like soft velvet, or finely ribbed with veins?',
+        'Count the petals on an open bloom and sketch its silhouette in your nature field journal!',
       ],
       safetyNote:
-          '🧤 Explorer safety tip: Always wash your hands after touching plants outside, and never taste a wild plant unless a knowledgeable grown-up says it\'s safe. When in doubt, just admire — don\'t nibble!',
+          '🧤 Explorer safety tip: Always wash your hands after outdoor expeditions, and check with a grown-up before picking wild plants or trying DIY nature crafts.',
+      rarity: rarity,
+      rarityReason: 'Spotted and celebrated in its natural outdoor habitat!',
     );
   }
 }
-
