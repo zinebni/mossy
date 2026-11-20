@@ -13,6 +13,8 @@ import '../../../services/quest_service.dart';
 import '../../../services/supabase_service.dart';
 import '../../../shared/models/discovery.dart';
 import '../../../shared/models/discovery_rarity.dart';
+import '../../../shared/models/garden_state.dart';
+import '../../../shared/widgets/celebration_dialogs.dart';
 import '../../../shared/widgets/rarity_widgets.dart';
 import '../../../shared/models/identification_result.dart';
 import '../../../shared/models/plant_candidate.dart';
@@ -815,6 +817,7 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
       );
       final rarity = discovery.rarity;
       final earnedPoints = rarity.totalPoints;
+      final oldGardenLevel = ref.read(gardenStateProvider).value?.gardenLevel ?? 1;
 
       // 5. Save to journal and award points
       await discoveryNotifier.addDiscovery(discovery);
@@ -836,9 +839,16 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
         ref.read(activeQuestProvider.notifier).state = null;
       }
 
+      final newGardenState = ref.read(gardenStateProvider).value;
+      final newGardenLevel = newGardenState?.gardenLevel ?? oldGardenLevel;
+      final gardenLeveledUp = newGardenLevel > oldGardenLevel;
+      final earnedBadge = ref.read(latestBadgeAwardProvider);
+
       if (!mounted) return;
       final l10n = AppLocalizations.of(context);
-      final isFr = l10n?.home == 'Accueil';
+      final isFr = ref.read(localeProvider).languageCode == 'fr' ||
+          Localizations.localeOf(context).languageCode == 'fr' ||
+          l10n?.home == 'Accueil';
 
       setState(() {
         _isSaving = false;
@@ -846,9 +856,30 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
       });
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          RarityCelebration.show(context, rarity, isFr: isFr, force: true);
+        if (!mounted) return;
+
+        void showFollowUpAlerts() {
+          if (!mounted) return;
+          if (earnedBadge != null) {
+            BadgeUnlockAlert.show(context, achievement: earnedBadge, isFr: isFr);
+            ref.read(latestBadgeAwardProvider.notifier).state = null;
+          } else if (gardenLeveledUp) {
+            GardenUnlockAlert.show(
+              context,
+              level: newGardenLevel,
+              unlockedItems: GardenState.levelItemUnlocks[newGardenLevel] ?? const [],
+              isFr: isFr,
+            );
+          }
         }
+
+        RarityCelebration.show(
+          context,
+          rarity,
+          isFr: isFr,
+          force: true,
+          onDone: showFollowUpAlerts,
+        );
       });
 
       ScaffoldMessenger.of(context).showSnackBar(

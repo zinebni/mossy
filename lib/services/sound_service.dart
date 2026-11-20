@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 /// Joyful sound effects service for Mossy.
-/// Uses dynamically synthesized clean WAV PCM bytes to guarantee 100% offline,
-/// reliable, cross-platform audio playback without external network or missing asset issues.
+/// Uses bundled WAV audio assets with instant fallback to synthesized
+/// in-memory WAV PCM bytes and native [SystemSound] clicks.
 class SoundService {
   static final SoundService instance = SoundService._internal();
 
@@ -13,79 +13,127 @@ class SoundService {
 
   factory SoundService() => instance;
 
-  AudioPlayer? _player;
   bool isMuted = false;
 
-  AudioPlayer _getPlayer() {
-    return _player ??= AudioPlayer();
+  // Cached in-memory WAV byte buffers for instant offline fallback
+  static Uint8List? _unlockChimeBytes;
+  static Uint8List? _badgeFanfareBytes;
+  static Uint8List? _gardenTapBytes;
+  static Uint8List? _celebrationBytes;
+
+  static Uint8List getUnlockChimeBytes() {
+    return _unlockChimeBytes ??= _synthesizeArpeggioWav(
+      frequencies: [523.25, 659.25, 783.99, 1046.50], // C5, E5, G5, C6
+      durations: [0.15, 0.15, 0.18, 0.55],
+      decayRates: [4.0, 4.0, 3.5, 2.5],
+    );
   }
 
-  // Pre-synthesized cached WAV byte buffers
-  Uint8List? _unlockChimeBytes;
-  Uint8List? _badgeFanfareBytes;
-  Uint8List? _gardenTapBytes;
-  Uint8List? _celebrationBytes;
+  static Uint8List getBadgeFanfareBytes() {
+    return _badgeFanfareBytes ??= _synthesizeArpeggioWav(
+      frequencies: [392.00, 523.25, 659.25, 783.99, 1046.50, 1318.51], // G4, C5, E5, G5, C6, E6
+      durations: [0.14, 0.14, 0.16, 0.18, 0.35, 0.65],
+      decayRates: [3.5, 3.5, 3.0, 3.0, 2.2, 1.8],
+      bellHarmonics: true,
+    );
+  }
+
+  static Uint8List getGardenTapBytes() {
+    return _gardenTapBytes ??= _synthesizePopWav();
+  }
+
+  static Uint8List getCelebrationBytes() {
+    return _celebrationBytes ??= _synthesizeArpeggioWav(
+      frequencies: [440.0, 554.37, 659.25, 880.0, 1108.73, 1318.51],
+      durations: [0.12, 0.12, 0.15, 0.18, 0.3, 0.7],
+      decayRates: [3.5, 3.5, 3.0, 2.8, 2.2, 1.8],
+      bellHarmonics: true,
+    );
+  }
 
   /// Plays a joyful ascending chime when an item or garden level is unlocked.
   Future<void> playUnlockSound() async {
-    await _playWithHaptic(
-      () => _unlockChimeBytes ??= _synthesizeArpeggioWav(
-        frequencies: [523.25, 659.25, 783.99, 1046.50], // C5, E5, G5, C6
-        durations: [0.15, 0.15, 0.18, 0.55],
-        decayRates: [4.0, 4.0, 3.5, 2.5],
-      ),
-      HapticFeedback.mediumImpact,
+    await _play(
+      assetPath: 'sounds/unlock_chime.wav',
+      byteGetter: getUnlockChimeBytes,
+      haptic: HapticFeedback.mediumImpact,
+      volume: 0.9,
     );
   }
 
   /// Plays a triumphant, magical fanfare when a new badge/achievement is earned.
   Future<void> playBadgeSound() async {
-    await _playWithHaptic(
-      () => _badgeFanfareBytes ??= _synthesizeArpeggioWav(
-        frequencies: [392.00, 523.25, 659.25, 783.99, 1046.50, 1318.51], // G4, C5, E5, G5, C6, E6
-        durations: [0.14, 0.14, 0.16, 0.18, 0.35, 0.65],
-        decayRates: [3.5, 3.5, 3.0, 3.0, 2.2, 1.8],
-        bellHarmonics: true,
-      ),
-      HapticFeedback.heavyImpact,
+    await _play(
+      assetPath: 'sounds/badge_fanfare.wav',
+      byteGetter: getBadgeFanfareBytes,
+      haptic: HapticFeedback.heavyImpact,
+      volume: 0.95,
     );
   }
 
   /// Plays a gentle, playful flower/water pop sound when tapping the garden sanctuary.
   Future<void> playGardenTapSound() async {
-    await _playWithHaptic(
-      () => _gardenTapBytes ??= _synthesizePopWav(),
-      HapticFeedback.lightImpact,
+    await _play(
+      assetPath: 'sounds/garden_tap.wav',
+      byteGetter: getGardenTapBytes,
+      haptic: HapticFeedback.lightImpact,
+      volume: 0.8,
+      lowLatency: true,
     );
   }
 
   /// Plays an extended celebration burst sound.
   Future<void> playCelebrationSound() async {
-    await _playWithHaptic(
-      () => _celebrationBytes ??= _synthesizeArpeggioWav(
-        frequencies: [440.0, 554.37, 659.25, 880.0, 1108.73, 1318.51],
-        durations: [0.12, 0.12, 0.15, 0.18, 0.3, 0.7],
-        decayRates: [3.5, 3.5, 3.0, 2.8, 2.2, 1.8],
-        bellHarmonics: true,
-      ),
-      HapticFeedback.heavyImpact,
+    await _play(
+      assetPath: 'sounds/celebration.wav',
+      byteGetter: getCelebrationBytes,
+      haptic: HapticFeedback.heavyImpact,
+      volume: 0.9,
     );
   }
 
-  Future<void> _playWithHaptic(Uint8List Function() byteGetter, Future<void> Function() haptic) async {
+  Future<void> _play({
+    required String assetPath,
+    required Uint8List Function() byteGetter,
+    required Future<void> Function() haptic,
+    double volume = 0.85,
+    bool lowLatency = false,
+  }) async {
+    // 1. Immediate tactile and system audio response
     try {
       await haptic().catchError((_) {});
+      await SystemSound.play(SystemSoundType.click).catchError((_) {});
     } catch (_) {}
 
     if (isMuted) return;
 
+    // 2. Play via AudioPlayer
     try {
-      final bytes = byteGetter();
-      final player = _getPlayer();
-      await player.stop();
-      await player.play(BytesSource(bytes), volume: 0.85);
+      final player = AudioPlayer();
+      if (lowLatency) {
+        await player.setPlayerMode(PlayerMode.lowLatency).catchError((_) {});
+      }
+
+      bool played = false;
+      // Try asset playback first
+      try {
+        await player.play(AssetSource(assetPath), volume: volume);
+        played = true;
+      } catch (_) {
+        played = false;
+      }
+
+      // Fallback to in-memory WAV byte stream with explicit audio/wav MIME type
+      if (!played) {
+        final bytes = byteGetter();
+        await player.play(BytesSource(bytes, mimeType: 'audio/wav'), volume: volume);
+      }
+
+      // Dispose player after completion to avoid native channel leaks
+      player.onPlayerComplete.listen((_) {
+        player.dispose().catchError((_) {});
+      });
     } catch (e) {
-      // In headless widget tests or devices without an audio card, silently ignore
       debugPrint('[Mossy SoundService] audio playback note: $e');
     }
   }
@@ -146,7 +194,6 @@ class SoundService {
 
     for (int i = 0; i < totalSamples; i++) {
       final t = i / sampleRate;
-      // Frequency rises slightly from 520Hz to 840Hz then drops, mimicking a cute water bubble / flower pop
       final f = 520.0 + 320.0 * math.sin(t * math.pi / duration);
       final env = math.sin(t * math.pi / duration) * math.exp(-t * 12.0);
       final wave = math.sin(2 * math.pi * f * t) + 0.3 * math.sin(4 * math.pi * f * t);
@@ -202,8 +249,5 @@ class SoundService {
     return buffer.buffer.asUint8List();
   }
 
-  void dispose() {
-    _player?.dispose();
-    _player = null;
-  }
+  void dispose() {}
 }

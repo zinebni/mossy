@@ -252,11 +252,16 @@ class RarityCelebration extends StatefulWidget {
     DiscoveryRarity rarity, {
     bool isFr = false,
     bool force = false,
+    VoidCallback? onDone,
   }) {
-    if (!rarity.isCelebratory && !force) return;
+    if (!rarity.isCelebratory && !force) {
+      onDone?.call();
+      return;
+    }
     final overlay = Overlay.maybeOf(context, rootOverlay: true) ?? Overlay.maybeOf(context);
     if (overlay == null) {
       debugPrint('[Mossy] Overlay not found for RarityCelebration');
+      onDone?.call();
       return;
     }
     // Gentle haptic tap (silently ignored on platforms without support).
@@ -269,6 +274,7 @@ class RarityCelebration extends StatefulWidget {
       try {
         entry.remove();
       } catch (_) {}
+      onDone?.call();
     }
 
     entry = OverlayEntry(

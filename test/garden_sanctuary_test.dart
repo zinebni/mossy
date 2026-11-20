@@ -64,6 +64,14 @@ void main() {
         expect(enName != frName, isTrue, reason: 'Item $id should have distinct FR and EN names');
         expect(enDesc != frDesc, isTrue, reason: 'Item $id should have distinct FR and EN descriptions');
       }
+
+      // Test normalization with spaces, emoji suffix, or legacy ids
+      expect(GardenState.formatItemName('moss_stone', true), 'Pierre de mousse 🪨');
+      expect(GardenState.formatItemName('stone_path', true), 'Sentier de pierres 🪨');
+      expect(GardenState.formatItemName('sunflower_patch', true), 'Champ de tournesols 🌻');
+      expect(GardenState.formatItemName('Tiny Sprout 🌱', true), 'Petite pousse 🌱');
+      expect(GardenState.formatItemName('Cozy Bench 🪑', true), 'Banc en bois 🪑');
+      expect(GardenState.formatItemDescription('Tiny Sprout 🌱', true), contains('petite pousse'));
     });
 
     test('Achievement provides kid-friendly bilingual titles and descriptions', () {

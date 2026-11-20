@@ -2,10 +2,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/mossy_card.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/sound_service.dart';
+import '../../../shared/models/achievement.dart';
 import '../../../shared/models/garden_state.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/celebration_dialogs.dart';
@@ -206,6 +208,24 @@ class _GardenScreenState extends ConsumerState<GardenScreen>
     );
   }
 
+  Future<void> _checkAutomaticCelebration(GardenState garden, bool isFr) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'mossy_last_celebrated_level_${garden.userId}';
+      final celebrated = prefs.getInt(key) ?? 1;
+      if (garden.gardenLevel > celebrated) {
+        await prefs.setInt(key, garden.gardenLevel);
+        if (!mounted) return;
+        GardenUnlockAlert.show(
+          context,
+          level: garden.gardenLevel,
+          unlockedItems: GardenState.levelItemUnlocks[garden.gardenLevel] ?? garden.unlockedItems.take(3).toList(),
+          isFr: isFr,
+        );
+      }
+    } catch (_) {}
+  }
+
   void _triggerCelebration(BuildContext context, GardenState garden, bool isFr) {
     GardenUnlockAlert.show(
       context,
@@ -219,8 +239,18 @@ class _GardenScreenState extends ConsumerState<GardenScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final currentLocale = ref.watch(localeProvider);
-    final isFr = currentLocale.languageCode == 'fr' || l10n?.home == 'Accueil';
+    final isFr = currentLocale.languageCode == 'fr' ||
+        Localizations.localeOf(context).languageCode == 'fr' ||
+        l10n?.home == 'Accueil';
     final gardenAsync = ref.watch(gardenStateProvider);
+
+    // Listen to newly awarded achievements
+    ref.listen<Achievement?>(latestBadgeAwardProvider, (prev, next) {
+      if (next != null) {
+        BadgeUnlockAlert.show(context, achievement: next, isFr: isFr);
+        ref.read(latestBadgeAwardProvider.notifier).state = null;
+      }
+    });
 
     // Detect level up in garden state
     gardenAsync.whenData((garden) {
@@ -234,6 +264,11 @@ class _GardenScreenState extends ConsumerState<GardenScreen>
             unlockedItems: GardenState.levelItemUnlocks[newLvl] ?? const [],
             isFr: isFr,
           );
+        });
+      } else if (_lastKnownLevel == null && garden.gardenLevel > 1) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _checkAutomaticCelebration(garden, isFr);
         });
       }
       _lastKnownLevel = garden.gardenLevel;

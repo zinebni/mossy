@@ -30,6 +30,7 @@ class GardenUnlockAlert extends StatelessWidget {
 
     return showDialog<void>(
       context: context,
+      useRootNavigator: true,
       barrierDismissible: true,
       builder: (ctx) => GardenUnlockAlert(
         level: level,
@@ -252,6 +253,7 @@ class BadgeUnlockAlert extends StatelessWidget {
 
     return showDialog<void>(
       context: context,
+      useRootNavigator: true,
       barrierDismissible: true,
       builder: (ctx) => BadgeUnlockAlert(
         achievement: achievement,

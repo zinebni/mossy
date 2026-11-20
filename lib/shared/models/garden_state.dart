@@ -52,57 +52,108 @@ class GardenState {
     return items.toList();
   }
 
+  /// Comprehensive mapping of item IDs to English names.
+  static const Map<String, String> _enNames = {
+    'tiny_sprout': 'Tiny Sprout 🌱',
+    'wooden_sign': 'Wooden Sign 🪵',
+    'moss_patch_starter': 'Moss Patch 🌿',
+    'moss_carpet': 'Moss Carpet 🌿',
+    'stepping_stones': 'Stepping Stones 🪨',
+    'wildflower_patch': 'Wildflowers 🌸',
+    'stone_birdbath': 'Stone Birdbath ⛲',
+    'fern_cluster': 'Fern Cluster 🪴',
+    'wooden_bench': 'Cozy Bench 🪑',
+    'butterfly_bush': 'Butterfly Bush 🦋',
+    'wind_chimes': 'Wind Chimes 🎐',
+    'flowering_shrub': 'Flowering Shrub 🌺',
+    'cobblestone_path': 'Cobblestone Path 🛤️',
+    'sunlit_pond': 'Sunlit Pond 💧',
+    'lantern_post': 'Lantern Post 🏮',
+    'wooden_bridge': 'Wooden Bridge 🌉',
+    'hummingbird_feeder': 'Hummingbird Feeder 🕊️',
+    'ancient_oak_canopy': 'Ancient Oak Canopy 🌳',
+    'firefly_glow': 'Firefly Glow ✨',
+    'grand_fountain': 'Grand Fountain ⛲',
+    'mossy_botanical_shrine': 'Botanical Shrine 🏛️',
+    'moss_stone': 'Moss Stone 🪨',
+    'stone_path': 'Stone Path 🪨',
+    'flower_arch': 'Flower Arch 🌹',
+    'sunflower_patch': 'Sunflower Patch 🌻',
+  };
+
+  /// Comprehensive mapping of item IDs to French names.
+  static const Map<String, String> _frNames = {
+    'tiny_sprout': 'Petite pousse 🌱',
+    'wooden_sign': 'Panneau en bois 🪵',
+    'moss_patch_starter': 'Carré de mousse 🌿',
+    'moss_carpet': 'Tapis de mousse 🌿',
+    'stepping_stones': 'Pas japonais 🪨',
+    'wildflower_patch': 'Fleurs sauvages 🌸',
+    'stone_birdbath': 'Bain d\'oiseaux ⛲',
+    'fern_cluster': 'Bosquet de fougères 🪴',
+    'wooden_bench': 'Banc en bois 🪑',
+    'butterfly_bush': 'Arbuste à papillons 🦋',
+    'wind_chimes': 'Carillon éolien 🎐',
+    'flowering_shrub': 'Arbuste fleuri 🌺',
+    'cobblestone_path': 'Chemin pavé 🛤️',
+    'sunlit_pond': 'Bassin ensoleillé 💧',
+    'lantern_post': 'Lanterne de jardin 🏮',
+    'wooden_bridge': 'Ponton en bois 🌉',
+    'hummingbird_feeder': 'Mangeoire d\'oiseaux 🕊️',
+    'ancient_oak_canopy': 'Grand chêne vénérable 🌳',
+    'firefly_glow': 'Lueur de lucioles ✨',
+    'grand_fountain': 'Grande fontaine ⛲',
+    'mossy_botanical_shrine': 'Sanctuaire botanique 🏛️',
+    'moss_stone': 'Pierre de mousse 🪨',
+    'stone_path': 'Sentier de pierres 🪨',
+    'flower_arch': 'Arche fleurie 🌹',
+    'sunflower_patch': 'Champ de tournesols 🌻',
+  };
+
+  /// Normalizes item identifiers (handling spaces, dashes, emojis, and reverse display names).
+  static String normalizeItemId(String raw) {
+    var key = raw.trim().toLowerCase();
+    // Strip emojis
+    key = key.replaceAll(RegExp(r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]', unicode: true), '').trim();
+    final slug = key.replaceAll(' ', '_').replaceAll('-', '_');
+
+    if (slug == 'cozy_bench') return 'wooden_bench';
+
+    if (_frNames.containsKey(slug) || _enNames.containsKey(slug)) {
+      return slug;
+    }
+
+    // Reverse lookup matching by normalized slug
+    for (final entry in _enNames.entries) {
+      final cleanEnSlug = entry.value
+          .replaceAll(RegExp(r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]', unicode: true), '')
+          .trim()
+          .toLowerCase()
+          .replaceAll(' ', '_')
+          .replaceAll('-', '_');
+      if (cleanEnSlug == slug) return entry.key;
+    }
+    for (final entry in _frNames.entries) {
+      final cleanFrSlug = entry.value
+          .replaceAll(RegExp(r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]', unicode: true), '')
+          .trim()
+          .toLowerCase()
+          .replaceAll(' ', '_')
+          .replaceAll('-', '_');
+      if (cleanFrSlug == slug) return entry.key;
+    }
+    return slug;
+  }
+
   /// Format item IDs into kid-friendly readable labels.
   static String formatItemName(String itemId, [bool isFr = false]) {
-    const enNames = {
-      'tiny_sprout': 'Tiny Sprout 🌱',
-      'wooden_sign': 'Wooden Sign 🪵',
-      'moss_patch_starter': 'Moss Patch 🌿',
-      'moss_carpet': 'Moss Carpet 🌿',
-      'stepping_stones': 'Stepping Stones 🪨',
-      'wildflower_patch': 'Wildflowers 🌸',
-      'stone_birdbath': 'Stone Birdbath ⛲',
-      'fern_cluster': 'Fern Cluster 🪴',
-      'wooden_bench': 'Cozy Bench 🪑',
-      'butterfly_bush': 'Butterfly Bush 🦋',
-      'wind_chimes': 'Wind Chimes 🎐',
-      'flowering_shrub': 'Flowering Shrub 🌺',
-      'cobblestone_path': 'Cobblestone Path 🛤️',
-      'sunlit_pond': 'Sunlit Pond 💧',
-      'lantern_post': 'Lantern Post 🏮',
-      'wooden_bridge': 'Wooden Bridge 🌉',
-      'hummingbird_feeder': 'Hummingbird Feeder 🕊️',
-      'ancient_oak_canopy': 'Ancient Oak Canopy 🌳',
-      'firefly_glow': 'Firefly Glow ✨',
-      'grand_fountain': 'Grand Fountain ⛲',
-      'mossy_botanical_shrine': 'Botanical Shrine 🏛️',
-    };
-    const frNames = {
-      'tiny_sprout': 'Petite pousse 🌱',
-      'wooden_sign': 'Panneau en bois 🪵',
-      'moss_patch_starter': 'Carré de mousse 🌿',
-      'moss_carpet': 'Tapis de mousse 🌿',
-      'stepping_stones': 'Pas japonais 🪨',
-      'wildflower_patch': 'Fleurs sauvages 🌸',
-      'stone_birdbath': 'Bain d\'oiseaux ⛲',
-      'fern_cluster': 'Bosquet de fougères 🪴',
-      'wooden_bench': 'Banc en bois 🪑',
-      'butterfly_bush': 'Arbuste à papillons 🦋',
-      'wind_chimes': 'Carillon éolien 🎐',
-      'flowering_shrub': 'Arbuste fleuri 🌺',
-      'cobblestone_path': 'Chemin pavé 🛤️',
-      'sunlit_pond': 'Bassin ensoleillé 💧',
-      'lantern_post': 'Lanterne de jardin 🏮',
-      'wooden_bridge': 'Ponton en bois 🌉',
-      'hummingbird_feeder': 'Mangeoire d\'oiseaux 🕊️',
-      'ancient_oak_canopy': 'Grand chêne vénérable 🌳',
-      'firefly_glow': 'Lueur de lucioles ✨',
-      'grand_fountain': 'Grande fontaine ⛲',
-      'mossy_botanical_shrine': 'Sanctuaire botanique 🏛️',
-    };
-    if (isFr && frNames.containsKey(itemId)) return frNames[itemId]!;
-    if (enNames.containsKey(itemId)) return enNames[itemId]!;
-    return itemId
+    final normId = normalizeItemId(itemId);
+    if (isFr && _frNames.containsKey(normId)) return _frNames[normId]!;
+    if (!isFr && _enNames.containsKey(normId)) return _enNames[normId]!;
+    if (_frNames.containsKey(normId) && isFr) return _frNames[normId]!;
+    if (_enNames.containsKey(normId)) return _enNames[normId]!;
+
+    return normId
         .replaceAll('_', ' ')
         .split(' ')
         .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
@@ -111,6 +162,7 @@ class GardenState {
 
   /// Kid-friendly descriptions for unlocked items in English and French.
   static String formatItemDescription(String itemId, [bool isFr = false]) {
+    final normId = normalizeItemId(itemId);
     const enDescriptions = {
       'tiny_sprout': 'A cheerful little green sprout stretching happily toward the sun.',
       'wooden_sign': 'A carved rustic wooden sign welcoming visitors to your haven.',
@@ -165,8 +217,8 @@ class GardenState {
       'stone_path': 'Des pierres lisses traçant une belle promenade dans le jardin.',
       'flower_arch': 'Une arche fleurie couverte de roses grimpantes très parfumées.',
     };
-    if (isFr && frDescriptions.containsKey(itemId)) return frDescriptions[itemId]!;
-    if (enDescriptions.containsKey(itemId)) return enDescriptions[itemId]!;
+    if (isFr && frDescriptions.containsKey(normId)) return frDescriptions[normId]!;
+    if (enDescriptions.containsKey(normId)) return enDescriptions[normId]!;
     return isFr
         ? 'Un merveilleux élément décoratif pour votre sanctuaire naturel.'
         : 'A wonderful botanical element that enriches your nature sanctuary.';
@@ -174,6 +226,7 @@ class GardenState {
 
   /// Returns the emoji representing this unlocked item.
   static String getItemEmoji(String itemId) {
+    final normId = normalizeItemId(itemId);
     const emojis = {
       'tiny_sprout': '🌱',
       'wooden_sign': '🪵',
@@ -201,13 +254,14 @@ class GardenState {
       'stone_path': '🪨',
       'flower_arch': '🌹',
     };
-    return emojis[itemId] ?? '🌿';
+    return emojis[normId] ?? '🌿';
   }
 
   /// Returns the level required to unlock this item.
   static int getItemLevel(String itemId) {
+    final normId = normalizeItemId(itemId);
     for (final entry in levelItemUnlocks.entries) {
-      if (entry.value.contains(itemId)) return entry.key;
+      if (entry.value.contains(normId)) return entry.key;
     }
     return 1;
   }

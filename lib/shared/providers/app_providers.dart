@@ -669,8 +669,16 @@ final discoveryStatsProvider = Provider<DiscoveryStats>((ref) {
 class LocaleNotifier extends StateNotifier<Locale> {
   static const String _key = 'mossy_app_locale';
 
-  LocaleNotifier() : super(const Locale('en')) {
+  LocaleNotifier() : super(_initialLocale()) {
     _loadSavedLocale();
+  }
+
+  static Locale _initialLocale() {
+    try {
+      final code = WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+      if (code == 'fr') return const Locale('fr');
+    } catch (_) {}
+    return const Locale('en');
   }
 
   Future<void> _loadSavedLocale() async {
