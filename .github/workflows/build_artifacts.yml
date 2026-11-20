@@ -98,6 +98,14 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Configure Android local.properties
+        run: |
+          mkdir -p android
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          if [ -n "$ANDROID_HOME" ]; then
+            echo "sdk.dir=$ANDROID_HOME" >> android/local.properties
+          fi
+
       - name: Build Android Release APK
         run: flutter build apk --release
 
