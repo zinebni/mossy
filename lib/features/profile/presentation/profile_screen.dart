@@ -9,6 +9,8 @@ import '../../../shared/models/achievement.dart';
 import '../../../shared/models/user_profile.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/widgets/celebration_dialogs.dart';
+import '../../../services/sound_service.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -24,6 +26,12 @@ class ProfileScreen extends ConsumerWidget {
 
     // Eagerly resolve profile from userProfileProvider or fallback directly to active auth state
     final profile = profileAsync.valueOrNull ?? authState.user;
+
+    ref.listen<Achievement?>(latestBadgeAwardProvider, (prev, next) {
+      if (next != null) {
+        BadgeUnlockAlert.show(context, achievement: next, isFr: isFr);
+      }
+    });
 
     return PopScope(
       canPop: true,
@@ -114,7 +122,7 @@ class ProfileScreen extends ConsumerWidget {
                             childAspectRatio: 0.85,
                             children: achievements
                                 .take(9)
-                                .map((a) => _AchievementBadge(achievement: a))
+                                .map((a) => _AchievementBadge(achievement: a, isFr: isFr))
                                 .toList(),
                           ),
                   ).animate().fadeIn(delay: 250.ms),
@@ -385,56 +393,150 @@ class _StatCard extends StatelessWidget {
 
 class _AchievementBadge extends StatelessWidget {
   final Achievement achievement;
-  const _AchievementBadge({required this.achievement});
+  final bool isFr;
+
+  const _AchievementBadge({required this.achievement, this.isFr = false});
+
+  void _handleTap(BuildContext context) {
+    if (achievement.isUnlocked) {
+      BadgeUnlockAlert.show(context, achievement: achievement, isFr: isFr);
+    } else {
+      SoundService.instance.playGardenTapSound();
+      showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => Container(
+          decoration: const BoxDecoration(
+            color: AppColors.cream,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.mintGreen,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.disabledBackground,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.lock_outline_rounded, color: AppColors.mutedText, size: 30),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                achievement.localizedTitle(isFr),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.darkGreen,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                achievement.localizedDescription(isFr),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.secondaryText,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                isFr ? 'Continuez d\'explorer pour débloquer ce badge ! 🌿' : 'Keep exploring nature to unlock this badge! 🌿',
+                style: const TextStyle(
+                  color: AppColors.sageGreen,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.sageGreen,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text(isFr ? 'Compris !' : 'Got it!', style: const TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final unlocked = achievement.isUnlocked;
-    return Container(
-      decoration: BoxDecoration(
-        color: unlocked
-            ? AppColors.mintGreen.withAlpha(60)
-            : AppColors.disabledBackground.withAlpha(80),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
+    final title = achievement.localizedTitle(isFr);
+
+    return InkWell(
+      onTap: () => _handleTap(context),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
           color: unlocked
-              ? AppColors.sageGreen.withAlpha(80)
-              : AppColors.border,
-          width: 1.5,
+              ? AppColors.mintGreen.withAlpha(60)
+              : AppColors.disabledBackground.withAlpha(80),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: unlocked
+                ? AppColors.sageGreen.withAlpha(80)
+                : AppColors.border,
+            width: 1.5,
+          ),
         ),
-      ),
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: unlocked
-                  ? AppColors.sageGreen.withAlpha(30)
-                  : AppColors.disabledBackground,
-              shape: BoxShape.circle,
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: unlocked
+                    ? AppColors.sageGreen.withAlpha(30)
+                    : AppColors.disabledBackground,
+                shape: BoxShape.circle,
+              ),
+              child: unlocked
+                  ? Center(child: Text(achievement.emoji, style: const TextStyle(fontSize: 22)))
+                  : const Icon(
+                      Icons.lock_outline_rounded,
+                      color: AppColors.mutedText,
+                      size: 24,
+                    ),
             ),
-            child: Icon(
-              unlocked ? Icons.emoji_events_rounded : Icons.lock_outline_rounded,
-              color: unlocked ? AppColors.sageGreen : AppColors.mutedText,
-              size: 24,
+            const SizedBox(height: 4),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: unlocked ? AppColors.darkGreen : AppColors.mutedText,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            achievement.title,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: unlocked ? AppColors.darkGreen : AppColors.mutedText,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

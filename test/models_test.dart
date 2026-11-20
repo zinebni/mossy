@@ -141,6 +141,58 @@ void main() {
       expect(updated.unlockedItems, contains('sprout'));
       expect(updated.unlockedItems, contains('stone-bench'));
     });
+
+    test('GardenState.calculateLevel matches explorer level points thresholds', () {
+      expect(GardenState.calculateLevel(0), 1);
+      expect(GardenState.calculateLevel(49), 1);
+      expect(GardenState.calculateLevel(50), 2);
+      expect(GardenState.calculateLevel(149), 2);
+      expect(GardenState.calculateLevel(150), 3);
+      expect(GardenState.calculateLevel(299), 3);
+      expect(GardenState.calculateLevel(300), 4);
+      expect(GardenState.calculateLevel(2250), 10);
+      expect(GardenState.calculateLevel(5000), 10); // clamped to max level
+    });
+
+    test('progressToNextLevel computes accurate progress percentage from points', () {
+      // Level 3 is 150 to 300 points (band = 150)
+      final g1 = GardenState(userId: 'u-1', gardenLevel: 3, totalPoints: 150);
+      expect(g1.progressToNextLevel, 0.0);
+
+      final g2 = GardenState(userId: 'u-1', gardenLevel: 3, totalPoints: 200);
+      expect(g2.progressToNextLevel, closeTo(50 / 150, 0.001));
+
+      final g3 = GardenState(userId: 'u-1', gardenLevel: 3, totalPoints: 225);
+      expect(g3.progressToNextLevel, closeTo(0.5, 0.001));
+
+      final gMax = GardenState(userId: 'u-1', gardenLevel: 10, totalPoints: 3000);
+      expect(gMax.progressToNextLevel, 1.0);
+    });
+
+    test('defaultUnlockedItemsForLevel cumulatively unlocks items up to level', () {
+      final lvl1Items = GardenState.defaultUnlockedItemsForLevel(1);
+      expect(lvl1Items, contains('tiny_sprout'));
+
+      final lvl3Items = GardenState.defaultUnlockedItemsForLevel(3);
+      expect(lvl3Items, contains('tiny_sprout'));
+      expect(lvl3Items, contains('moss_carpet'));
+      expect(lvl3Items, contains('stepping_stones'));
+      expect(lvl3Items, contains('wildflower_patch'));
+      expect(lvl3Items, contains('stone_birdbath'));
+    });
+
+    test('fromJson ensures level consistency and unlocks items for level', () {
+      final json = {
+        'user_id': 'u-1',
+        'garden_level': 1,
+        'total_points': 160, // 160 pts => Level 3!
+        'unlocked_items': ['custom_flower'],
+      };
+      final state = GardenState.fromJson(json);
+      expect(state.gardenLevel, 3);
+      expect(state.unlockedItems, contains('custom_flower'));
+      expect(state.unlockedItems, contains('wildflower_patch'));
+    });
   });
 
   group('Mission & UserProfile Models Tests', () {

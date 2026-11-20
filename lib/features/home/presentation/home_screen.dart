@@ -9,12 +9,14 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/mossy_card.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/quest_service.dart';
+import '../../../shared/models/achievement.dart';
 import '../../../shared/models/discovery.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/widgets/mascot/mascot_expression.dart';
 import '../../../shared/widgets/mascot/mascot_with_accessory.dart';
 import '../../../shared/widgets/mascot/mossy_mascot.dart';
 import '../../../shared/widgets/rarity_widgets.dart';
+import '../../../shared/widgets/celebration_dialogs.dart';
 import '../../adventures/presentation/widgets/challenge_detail_sheet.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -71,6 +73,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final questsAsync = ref.watch(questsProvider);
     final gardenAsync = ref.watch(gardenStateProvider);
     final achievementsAsync = ref.watch(achievementsProvider);
+
+    ref.listen<Achievement?>(latestBadgeAwardProvider, (prev, next) {
+      if (next != null) {
+        BadgeUnlockAlert.show(context, achievement: next, isFr: isFr);
+      }
+    });
 
     return Scaffold(
       backgroundColor: AppColors.creamBackground,

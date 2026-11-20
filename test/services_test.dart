@@ -91,6 +91,28 @@ void main() {
       expect(withItem.unlockedItems, contains('item-bird-bath'));
     });
 
+    test('DemoGardenService checkProgression updates level and unlocks items according to points', () async {
+      final service = DemoGardenService();
+      const userId = 'test-gardener-progression';
+
+      // 150 points corresponds to Level 3
+      final level3Garden = await service.checkProgression(userId, 150);
+      expect(level3Garden.gardenLevel, 3);
+      expect(level3Garden.unlockedItems, contains('wildflower_patch'));
+      expect(level3Garden.unlockedItems, contains('stone_birdbath'));
+
+      // Check with a point amount that doesn't trigger downgrade
+      final sameGarden = await service.checkProgression(userId, 0);
+      expect(sameGarden.gardenLevel, 3); // Level must not drop!
+      expect(sameGarden.unlockedItems, contains('wildflower_patch'));
+
+      // Advance to 300 points (Level 4)
+      final level4Garden = await service.checkProgression(userId, 300);
+      expect(level4Garden.gardenLevel, 4);
+      expect(level4Garden.unlockedItems, contains('fern_cluster'));
+      expect(level4Garden.unlockedItems, contains('wildflower_patch'));
+    });
+
     test('DemoPointsService computes ledger and total points', () async {
       final service = DemoPointsService();
       const userId = 'test-points-user';

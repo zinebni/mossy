@@ -9,4 +9,5 @@ export 'location_service.dart';
 export 'mission_service.dart';
 export 'plant_identification_service.dart';
 export 'points_service.dart';
+export 'sound_service.dart';
 export 'supabase_service.dart';

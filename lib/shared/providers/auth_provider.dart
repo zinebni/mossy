@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import '../../services/discovery_service.dart';
+import '../../services/garden_service.dart';
 import '../../services/points_service.dart';
 import '../../services/quest_service.dart';
 import '../../services/supabase_service.dart';
@@ -547,6 +548,8 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
       await LocalDiscoveryStore.clearUser(userId);
       // Clear persisted points ledger for this user
       await DemoPointsService().clearUser(userId);
+      // Clear persisted garden state for this user
+      await DemoGardenService().clearUser(userId);
     }
     await LocalDiscoveryStore.clearAll();
     await LocalQuestService().clearAll();

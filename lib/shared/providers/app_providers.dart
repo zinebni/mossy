@@ -14,6 +14,7 @@ import '../../services/mission_service.dart';
 import '../../services/plant_identification_service.dart';
 import '../../services/points_service.dart';
 import '../../services/quest_service.dart';
+import '../../services/sound_service.dart';
 import '../../services/supabase_service.dart';
 
 import '../models/achievement.dart';
@@ -92,6 +93,9 @@ final gardenServiceProvider = Provider<GardenService>((ref) {
       ? DemoGardenService()
       : SupabaseGardenService(supabase);
 });
+
+/// Provider for sound effects service.
+final soundServiceProvider = Provider<SoundService>((ref) => SoundService.instance);
 
 /// Provider for points reward tracking.
 final pointsServiceProvider = Provider<PointsService>((ref) {
@@ -307,8 +311,9 @@ final missionsProvider =
 class AchievementsNotifier extends StateNotifier<AsyncValue<List<Achievement>>> {
   final AchievementService _service;
   final String _userId;
+  final Ref? _ref;
 
-  AchievementsNotifier(this._service, this._userId)
+  AchievementsNotifier(this._service, this._userId, [this._ref])
       : super(const AsyncValue.loading()) {
     if (_userId.isEmpty) {
       state = const AsyncValue.data([]);
@@ -345,6 +350,9 @@ class AchievementsNotifier extends StateNotifier<AsyncValue<List<Achievement>>> 
     );
 
     if (newlyUnlocked.isNotEmpty) {
+      if (_ref != null) {
+        _ref.read(latestBadgeAwardProvider.notifier).state = newlyUnlocked.first;
+      }
       await loadAchievements();
     }
     return newlyUnlocked;
@@ -353,6 +361,9 @@ class AchievementsNotifier extends StateNotifier<AsyncValue<List<Achievement>>> 
   Future<Achievement?> unlock(String achievementId) async {
     final unlocked = await _service.unlockAchievement(_userId, achievementId);
     if (unlocked != null) {
+      if (_ref != null) {
+        _ref.read(latestBadgeAwardProvider.notifier).state = unlocked;
+      }
       state = state.whenData((list) =>
           list.map((a) => a.id == unlocked.id ? unlocked : a).toList());
     }
@@ -360,68 +371,94 @@ class AchievementsNotifier extends StateNotifier<AsyncValue<List<Achievement>>> 
   }
 }
 
+/// Tracks the most recently awarded achievement badge for celebration alerts.
+final latestBadgeAwardProvider = StateProvider<Achievement?>((ref) => null);
+
 /// Global provider for achievements.
 final achievementsProvider =
     StateNotifierProvider<AchievementsNotifier, AsyncValue<List<Achievement>>>((ref) {
   final service = ref.watch(achievementServiceProvider);
   final auth = ref.watch(authProvider);
   final userId = auth.user?.id ?? '';
-  return AchievementsNotifier(service, userId);
+  return AchievementsNotifier(service, userId, ref);
 });
 
 /// Notifier managing virtual garden state.
 class GardenStateNotifier extends StateNotifier<AsyncValue<GardenState>> {
   final GardenService _service;
   final String _userId;
+  final int _userPoints;
 
-  GardenStateNotifier(this._service, this._userId)
-      : super(const AsyncValue.loading()) {
-    if (_userId.isEmpty) {
-      state = AsyncValue.data(GardenState(
-        userId: '',
-        gardenLevel: 1,
-        unlockedItems: const ['tiny_sprout'],
-        updatedAt: DateTime.now(),
-      ));
-    } else {
+  GardenStateNotifier(this._service, this._userId, [this._userPoints = 0])
+      : super(AsyncValue.data(GardenState(
+          userId: _userId,
+          gardenLevel: _userPoints > 0 ? GardenState.calculateLevel(_userPoints) : 1,
+          totalPoints: _userPoints,
+          unlockedItems: GardenState.defaultUnlockedItemsForLevel(
+            _userPoints > 0 ? GardenState.calculateLevel(_userPoints) : 1,
+          ),
+          updatedAt: DateTime.now(),
+        ))) {
+    if (_userId.isNotEmpty) {
       loadGardenState();
     }
   }
 
-  Future<void> loadGardenState() async {
+  Future<void> loadGardenState([int? pointsOverride]) async {
     if (_userId.isEmpty) {
-      state = AsyncValue.data(GardenState(
-        userId: '',
-        gardenLevel: 1,
-        unlockedItems: const ['tiny_sprout'],
-        updatedAt: DateTime.now(),
-      ));
+      final pts = pointsOverride ?? _userPoints;
+      final lvl = pts > 0 ? GardenState.calculateLevel(pts) : 1;
+      if (mounted) {
+        state = AsyncValue.data(GardenState(
+          userId: '',
+          gardenLevel: lvl,
+          totalPoints: pts,
+          unlockedItems: GardenState.defaultUnlockedItemsForLevel(lvl),
+          updatedAt: DateTime.now(),
+        ));
+      }
       return;
     }
     try {
-      final garden = await _service.getGardenState(_userId);
-      state = AsyncValue.data(garden);
+      var garden = await _service.getGardenState(_userId);
+      final pts = pointsOverride ?? _userPoints;
+      if (pts > 0) {
+        final ptsLevel = GardenState.calculateLevel(pts);
+        if (ptsLevel > garden.gardenLevel) {
+          garden = await _service.updateGardenLevel(_userId, ptsLevel);
+        }
+        if (garden.totalPoints != pts) {
+          garden = garden.copyWith(totalPoints: pts);
+        }
+      }
+      if (mounted) state = AsyncValue.data(garden);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (mounted) state = AsyncValue.error(e, st);
     }
   }
 
   Future<GardenState> updateLevel(int newLevel) async {
     final updated = await _service.updateGardenLevel(_userId, newLevel);
-    state = AsyncValue.data(updated);
+    if (mounted) state = AsyncValue.data(updated);
     return updated;
   }
 
   Future<GardenState> unlockItem(String itemId) async {
     final updated = await _service.unlockGardenItem(_userId, itemId);
-    state = AsyncValue.data(updated);
+    if (mounted) state = AsyncValue.data(updated);
     return updated;
   }
 
   Future<GardenState> checkProgression(int totalPoints) async {
     final updated = await _service.checkProgression(_userId, totalPoints);
-    state = AsyncValue.data(updated);
-    return updated;
+    final synced = updated.copyWith(totalPoints: totalPoints);
+    if (mounted) state = AsyncValue.data(synced);
+    return synced;
+  }
+
+  Future<GardenState> syncWithPoints(int totalPoints) async {
+    if (!mounted) return await _service.checkProgression(_userId, totalPoints);
+    return checkProgression(totalPoints);
   }
 }
 
@@ -431,7 +468,8 @@ final gardenStateProvider =
   final service = ref.watch(gardenServiceProvider);
   final auth = ref.watch(authProvider);
   final userId = auth.user?.id ?? '';
-  return GardenStateNotifier(service, userId);
+  final points = auth.user?.totalPoints ?? 0;
+  return GardenStateNotifier(service, userId, points);
 });
 
 /// Notifier managing user profile state and points advancement.
@@ -466,10 +504,16 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
       );
       if (mounted) {
         state = AsyncValue.data(updated);
+        try {
+          _ref.read(gardenStateProvider.notifier).syncWithPoints(bestTotal);
+        } catch (_) {}
       }
     } catch (_) {
       if (mounted) {
         state = AsyncValue.data(user);
+        try {
+          _ref.read(gardenStateProvider.notifier).syncWithPoints(user.totalPoints);
+        } catch (_) {}
       }
     }
   }
@@ -497,7 +541,7 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
       _ref.read(authProvider.notifier).addPoints(points);
 
       // Check garden progression after point award
-      await _ref.read(gardenStateProvider.notifier).checkProgression(newTotal);
+      await _ref.read(gardenStateProvider.notifier).syncWithPoints(newTotal);
 
       // Check achievements progression
       final discoveries = _ref.read(discoveriesProvider).value ?? [];
@@ -505,12 +549,13 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
       final completedMissions = missions.where((m) => m.isCompleted).length;
       final families = discoveries.map((d) => d.family).toSet().length;
       final garden = _ref.read(gardenStateProvider).value;
+      final effectiveGardenLevel = garden?.gardenLevel ?? GardenState.calculateLevel(newTotal);
 
       await _ref.read(achievementsProvider.notifier).checkAndAward(
         discoveryCount: discoveries.length,
         distinctFamilyCount: families,
         completedMissionsCount: completedMissions,
-        gardenLevel: garden?.gardenLevel ?? 1,
+        gardenLevel: effectiveGardenLevel,
       );
     } catch (e) {
       debugPrint('[Mossy] Error adding points: $e');
