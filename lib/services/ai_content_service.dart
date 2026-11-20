@@ -274,6 +274,8 @@ class DemoAiContentService implements AiContentService {
       ],
       safetyNote:
           '🌿 Dandelions are safe to touch and even eat — but the milky white sap from the stem can irritate sensitive skin. Always wash your hands after handling, and check with a grown-up before tasting wild plants!',
+      rarity: DiscoveryRarity.common,
+      rarityReason: 'Dandelions pop up everywhere from meadows to cracks in the sidewalk!',
     ),
     'rosa canina': AiContent(
       introduction:
@@ -294,6 +296,8 @@ class DemoAiContentService implements AiContentService {
       ],
       safetyNote:
           '⚠️ Rose hips are great for wildlife but be careful — the tiny hairs inside the fruit are super itchy! Always cook or strain them with a grown-up\'s help. Never eat anything unprocessed from the wild without checking first.',
+      rarity: DiscoveryRarity.uncommon,
+      rarityReason: 'Often found rambling along country hedgerows and woodland edges.',
     ),
     'lavandula angustifolia': AiContent(
       introduction:
@@ -314,6 +318,8 @@ class DemoAiContentService implements AiContentService {
       ],
       safetyNote:
           '✅ Lavender is very safe to touch and smell — even kids and pets are fine around it. If you want to use lavender oil from a bottle, ask a grown-up to dilute it first, as pure essential oils can irritate skin.',
+      rarity: DiscoveryRarity.rare,
+      rarityReason: 'Needs plenty of hot sun and well-drained soil, making wild lavender a special find!',
     ),
     'trifolium repens': AiContent(
       introduction:
@@ -334,6 +340,8 @@ class DemoAiContentService implements AiContentService {
       ],
       safetyNote:
           '✅ White clover is safe to touch and even nibble a flower or two for fun! Just don\'t eat large amounts of raw leaves. Always wash your hands after rolling in the grass — and enjoy the hunt!',
+      rarity: DiscoveryRarity.common,
+      rarityReason: 'Super common in green grass everywhere, but 4-leaf clovers are legendary!',
     ),
     'hedera helix': AiContent(
       introduction:
@@ -354,6 +362,8 @@ class DemoAiContentService implements AiContentService {
       ],
       safetyNote:
           '⚠️ Important: Ivy berries and leaves are toxic to humans and pets if eaten — never taste them! It\'s safe to touch ivy (though some people\'s skin reacts), but always wash your hands well afterwards.',
+      rarity: DiscoveryRarity.uncommon,
+      rarityReason: 'Climbs on old stone walls and ancient trees in deep forests.',
     ),
   };
 
@@ -397,6 +407,8 @@ class DemoAiContentService implements AiContentService {
       ],
       safetyNote:
           '🌿 Le Pissenlit est sans danger à toucher et même à manger — mais le suc laiteux de la tige peut irriter les peaux sensibles. Lavez-vous les mains après et demandez à un adulte avant de goûter des plantes sauvages !',
+      rarity: DiscoveryRarity.common,
+      rarityReason: 'Le pissenlit pousse partout, des prés aux trottoirs !',
     ),
     'rosa canina': AiContent(
       introduction:
@@ -457,6 +469,8 @@ class DemoAiContentService implements AiContentService {
       ],
       safetyNote:
           '✅ Le Trèfle blanc est sans danger à toucher et même à grignoter une petite fleur ! Évite juste de manger de grandes quantités de feuilles crues. Lave-toi les mains après — et profite de la chasse !',
+      rarity: DiscoveryRarity.common,
+      rarityReason: 'Très répandu dans l''herbe, mais le trèfle à 4 feuilles est légendaire !',
     ),
     'hedera helix': AiContent(
       introduction:
@@ -477,6 +491,8 @@ class DemoAiContentService implements AiContentService {
       ],
       safetyNote:
           '⚠️ Important : les baies et les feuilles de Lierre sont toxiques pour les humains et les animaux si on les mange — ne les goûte jamais ! Toucher le Lierre est généralement sans danger, mais lave toujours bien tes mains après.',
+      rarity: DiscoveryRarity.uncommon,
+      rarityReason: 'Grimpe le long des vieux murs et des grands arbres en forêt.',
     ),
   };
 
@@ -518,6 +534,8 @@ class DemoAiContentService implements AiContentService {
         ],
         safetyNote:
             '🧤 Conseil d\'explorateur : lave toujours tes mains après avoir touché des plantes dehors, et ne goûte jamais une plante sauvage sans qu\'un adulte compétent dise que c\'est sans danger. Dans le doute, on admire — on ne croque pas !',
+        rarity: RarityEngine.assign(scientificName: scientificName, family: family),
+        rarityReason: 'Observée dans son milieu naturel par les explorateurs !',
       );
     }
 

@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -1198,9 +1198,7 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                         RarityBadge(
                           rarity: _d.rarity,
                           isFr: isFr,
-                          onTap: _d.rarity.isCelebratory
-                              ? () => RarityCelebration.show(context, _d.rarity, isFr: isFr)
-                              : null,
+                          onTap: () => RarityCelebration.show(context, _d.rarity, isFr: isFr, force: true),
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -1211,35 +1209,40 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                             color: _d.rarity.color,
                           ),
                         ),
-                        if (_d.rarity.isCelebratory) ...[
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () => RarityCelebration.show(context, _d.rarity, isFr: isFr),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: _d.rarity.color.withAlpha(150)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text('🎉', style: TextStyle(fontSize: 13)),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    isFr ? 'Rejouer' : 'Replay',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: _d.rarity.color,
-                                    ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => RarityCelebration.show(context, _d.rarity, isFr: isFr, force: true),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: _d.rarity.color.withAlpha(150)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _d.rarity.color.withAlpha(35),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('🎉', style: TextStyle(fontSize: 13)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  isFr ? 'Rejouer' : 'Replay',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: _d.rarity.color,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ],
                     ),
                   ),

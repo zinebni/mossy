@@ -85,11 +85,21 @@ class RarityCelebration extends StatefulWidget {
 
   static const Duration duration = Duration(milliseconds: 2400);
 
-  /// Plays the celebration in the root overlay. No-op for tiers below rare.
-  static void show(BuildContext context, DiscoveryRarity rarity, {bool isFr = false}) {
-    if (!rarity.isCelebratory) return;
-    final overlay = Overlay.maybeOf(context, rootOverlay: true);
-    if (overlay == null) return;
+  /// Plays the celebration in the root overlay.
+  /// If [force] is true, celebration plays for any rarity tier.
+  /// Otherwise, plays when [rarity.isCelebratory] is true.
+  static void show(
+    BuildContext context,
+    DiscoveryRarity rarity, {
+    bool isFr = false,
+    bool force = false,
+  }) {
+    if (!rarity.isCelebratory && !force) return;
+    final overlay = Overlay.maybeOf(context, rootOverlay: true) ?? Overlay.maybeOf(context);
+    if (overlay == null) {
+      debugPrint('[Mossy] Overlay not found for RarityCelebration');
+      return;
+    }
     // Gentle haptic tap (silently ignored on platforms without support).
     HapticFeedback.lightImpact().catchError((_) {});
     late final OverlayEntry entry;
@@ -97,7 +107,9 @@ class RarityCelebration extends StatefulWidget {
     void remove() {
       if (removed) return;
       removed = true;
-      entry.remove();
+      try {
+        entry.remove();
+      } catch (_) {}
     }
 
     entry = OverlayEntry(
@@ -133,6 +145,16 @@ class _RarityCelebrationState extends State<RarityCelebration>
   ];
 
   static const Map<DiscoveryRarity, List<String>> _shoutsEn = {
+    DiscoveryRarity.common: [
+      'New plant in your Journal! 🌱',
+      'Nature Explorer on a roll! 🌿',
+      'Great catch, nature detective! 🔍',
+    ],
+    DiscoveryRarity.uncommon: [
+      'Nice find! That one is special! 🍃',
+      'Sharp eyes, explorer! ✨',
+      'Uncommon discovery recorded! 🌿',
+    ],
     DiscoveryRarity.rare: [
       'Wow, a rare find! 🎉',
       'Super spotter! You found something special! ✨',
@@ -151,6 +173,16 @@ class _RarityCelebrationState extends State<RarityCelebration>
   };
 
   static const Map<DiscoveryRarity, List<String>> _shoutsFr = {
+    DiscoveryRarity.common: [
+      'Nouvelle plante dans ton Journal ! 🌱',
+      'Explorateur de la nature en action ! 🌿',
+      'Super trouvaille, détective ! 🔍',
+    ],
+    DiscoveryRarity.uncommon: [
+      'Belle trouvaille ! Celle-ci est spéciale ! 🍃',
+      'Quel œil d\'explorateur ! ✨',
+      'Une jolie rareté découverte ! 🌿',
+    ],
     DiscoveryRarity.rare: [
       'Waouh, une trouvaille rare ! 🎉',
       'Super explorateur ! Tu as trouvé quelque chose de spécial ! ✨',
@@ -172,13 +204,14 @@ class _RarityCelebrationState extends State<RarityCelebration>
   void initState() {
     super.initState();
     final rnd = math.Random();
-    final tier = widget.rarity.index - DiscoveryRarity.rare.index; // 0..2
+    final tier = widget.rarity.index; // 0..4
     final palette = <Color>[widget.rarity.color, widget.rarity.color, ..._rainbow];
 
-    final shouts = (widget.isFr ? _shoutsFr : _shoutsEn)[widget.rarity]!;
+    final shouts = (widget.isFr ? _shoutsFr : _shoutsEn)[widget.rarity] ??
+        (widget.isFr ? _shoutsFr[DiscoveryRarity.rare]! : _shoutsEn[DiscoveryRarity.rare]!);
     _shout = shouts[rnd.nextInt(shouts.length)];
 
-    final burstCount = 4 + tier * 2; // 4, 6, 8
+    final burstCount = 3 + tier; // 3, 4, 5, 6, 7
     _bursts = List.generate(burstCount, (i) {
       return _Burst(
         center: Offset(0.15 + rnd.nextDouble() * 0.7, 0.14 + rnd.nextDouble() * 0.34),
@@ -197,7 +230,7 @@ class _RarityCelebrationState extends State<RarityCelebration>
       );
     });
 
-    final confettiCount = 26 + tier * 12;
+    final confettiCount = 20 + tier * 8; // 20, 28, 36, 44, 52
     _confetti = List.generate(confettiCount, (_) {
       return _Confetti(
         x: rnd.nextDouble(),
@@ -228,9 +261,9 @@ class _RarityCelebrationState extends State<RarityCelebration>
   @override
   Widget build(BuildContext context) {
     final r = widget.rarity;
-    final bonus = widget.isFr
-        ? '+${r.bonusPoints} points bonus !'
-        : '+${r.bonusPoints} bonus XP!';
+    final bonus = r.bonusPoints > 0
+        ? (widget.isFr ? '+${r.bonusPoints} points bonus !' : '+${r.bonusPoints} bonus XP!')
+        : (widget.isFr ? '+${r.totalPoints} points gagnés !' : '+${r.totalPoints} XP earned!');
 
     return IgnorePointer(
       child: Material(

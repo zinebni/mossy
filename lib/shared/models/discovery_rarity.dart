@@ -1,4 +1,4 @@
-import 'dart:ui' show Color;
+﻿import 'dart:ui' show Color;
 
 /// Rarity tier of a plant discovery.
 enum DiscoveryRarity {

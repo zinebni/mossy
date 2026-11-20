@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -809,9 +809,12 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
         createdAt: DateTime.now(),
         identificationScore: candidate.score,
         aiContent: aiContent,
-        // Gemini decides the tier; invalid/missing -> simple safe fallback.
+        // Gemini decides the tier; invalid/missing -> deterministic engine.
         rarity: aiContent.rarity ??
-            RarityEngine.safeFallback(scientificName: candidate.scientificName),
+            RarityEngine.assign(
+              scientificName: candidate.scientificName,
+              family: candidate.family,
+            ),
       );
       final rarity = discovery.rarity;
       final earnedPoints = rarity.totalPoints;
@@ -845,7 +848,11 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
         _isSaved = true;
       });
 
-      RarityCelebration.show(context, rarity, isFr: isFr);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          RarityCelebration.show(context, rarity, isFr: isFr, force: true);
+        }
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -881,6 +888,12 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
     final l10n = AppLocalizations.of(context);
     final isFr = l10n?.home == 'Accueil';
     final candidate = _selectedCandidate ?? widget.result.bestMatch;
+    final candidateRarity = candidate != null
+        ? RarityEngine.assign(
+            scientificName: candidate.scientificName,
+            family: candidate.family,
+          )
+        : DiscoveryRarity.common;
     final activeQuest = ref.watch(activeQuestProvider);
     final bool isQuestMatch = activeQuest != null &&
         candidate != null &&
@@ -955,6 +968,28 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
                                   'Family: ${candidate.family}',
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
                                 ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  RarityBadge(rarity: candidateRarity, isFr: isFr),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.butterYellow.withAlpha(180),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '+${candidateRarity.totalPoints} XP',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.darkGreen,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -1214,20 +1249,81 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
                       decoration: BoxDecoration(
                         color: AppColors.mintLight,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.sageGreen.withAlpha(120), width: 1.5),
+                        border: Border.all(color: candidateRarity.color.withAlpha(160), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(color: candidateRarity.color.withAlpha(30), blurRadius: 8, offset: const Offset(0, 2)),
+                        ],
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Column(
                         children: [
-                          const Icon(Icons.check_circle_rounded, color: AppColors.darkGreen, size: 22),
-                          const SizedBox(width: 8),
-                          Text(
-                            l10n?.saveToCollection != null ? '${l10n!.saveToCollection} ✓' : 'Saved to your Journal! ✓',
-                            style: const TextStyle(
-                              color: AppColors.darkGreen,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.check_circle_rounded, color: AppColors.darkGreen, size: 22),
+                              const SizedBox(width: 8),
+                              Text(
+                                l10n?.saveToCollection != null ? '${l10n!.saveToCollection} ✓' : 'Saved to your Journal! ✓',
+                                style: const TextStyle(
+                                  color: AppColors.darkGreen,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              RarityBadge(rarity: candidateRarity, isFr: isFr),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.butterYellow,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '+${candidateRarity.totalPoints} XP',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.darkGreen,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => RarityCelebration.show(context, candidateRarity, isFr: isFr, force: true),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: candidateRarity.color.withAlpha(150)),
+                                    boxShadow: [
+                                      BoxShadow(color: candidateRarity.color.withAlpha(40), blurRadius: 4, offset: const Offset(0, 1)),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text('🎉', style: TextStyle(fontSize: 12)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        isFr ? 'Célébrer !' : 'Celebrate!',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                          color: candidateRarity.color,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -1273,7 +1369,7 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
                       height: 52,
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.bookmark_add_rounded),
-                        label: Text(l10n?.saveToCollection ?? 'Save to Collection', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        label: Text('${l10n?.saveToCollection ?? 'Save to Collection'} (+${candidateRarity.totalPoints} XP)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.sageGreen,
                           foregroundColor: Colors.white,

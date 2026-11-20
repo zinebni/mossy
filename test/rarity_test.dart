@@ -115,5 +115,24 @@ void main() {
       await tester.pump();
       expect(find.byType(RarityCelebration), findsNothing);
     });
+
+    testWidgets('common finds trigger celebration when forced', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (ctx) => Scaffold(
+            body: TextButton(
+              onPressed: () => RarityCelebration.show(ctx, DiscoveryRarity.common, force: true),
+              child: const Text('go'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('go'));
+      await tester.pump();
+      expect(find.byType(RarityCelebration), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 2500));
+      await tester.pump();
+      expect(find.byType(RarityCelebration), findsNothing);
+    });
   });
 }
