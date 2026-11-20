@@ -723,27 +723,6 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
   bool _isSaving = false;
   bool _isSaved = false;
   String _statusMessage = 'Saving to Journal...';
-  PlantCandidate? _selectedCandidate;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedCandidate = widget.result.bestMatch;
-  }
-
-  Color _confidenceColor(double s) {
-    if (s >= 0.7) return AppColors.success;
-    if (s >= 0.3) return AppColors.butterYellow;
-    return AppColors.error;
-  }
-
-  String _confidenceLabel(double s) {
-    final l10n = AppLocalizations.of(context);
-    if (s >= 0.7) return l10n?.veryLikely ?? 'Very Likely';
-    if (s >= 0.4) return l10n?.likely ?? 'Likely';
-    if (s >= 0.2) return l10n?.possible ?? 'Possible';
-    return l10n?.uncertain ?? 'Uncertain';
-  }
 
   Future<void> _saveDiscovery(PlantCandidate candidate) async {
     if (_isSaving || _isSaved) return;
@@ -887,7 +866,8 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isFr = l10n?.home == 'Accueil';
-    final candidate = _selectedCandidate ?? widget.result.bestMatch;
+    final candidate = widget.result.bestMatch ??
+        (widget.result.candidates.isNotEmpty ? widget.result.candidates.first : null);
     final candidateRarity = candidate != null
         ? RarityEngine.assign(
             scientificName: candidate.scientificName,
@@ -942,79 +922,54 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   if (candidate != null) ...[
-                    Row(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                candidate.commonName.isNotEmpty ? candidate.commonName : candidate.scientificName,
-                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.darkGreen,
-                                    ),
+                        Text(
+                          candidate.commonName.isNotEmpty ? candidate.commonName : candidate.scientificName,
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.darkGreen,
                               ),
-                              Text(
-                                candidate.scientificName,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      fontStyle: FontStyle.italic,
-                                      color: AppColors.secondaryText,
-                                    ),
-                              ),
-                              if (candidate.family.isNotEmpty)
-                                Text(
-                                  'Family: ${candidate.family}',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
-                                ),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  RarityBadge(rarity: candidateRarity, isFr: isFr),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.butterYellow.withAlpha(180),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      '+${candidateRarity.totalPoints} XP',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.darkGreen,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _confidenceColor(candidate.score).withAlpha(30),
-                            borderRadius: BorderRadius.circular(10),
+                        Text(
+                          candidate.scientificName,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontStyle: FontStyle.italic,
+                                color: AppColors.secondaryText,
+                              ),
+                        ),
+                        if (candidate.family.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Family: ${candidate.family}',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
+                            ),
                           ),
-                          child: Column(
-                            children: [
-                              Text(
-                                _confidenceLabel(candidate.score),
-                                style: TextStyle(
-                                  color: _confidenceColor(candidate.score),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
+                        const SizedBox(height: 8),
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            RarityBadge(rarity: candidateRarity, isFr: isFr),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.butterYellow.withAlpha(180),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '+${candidateRarity.totalPoints} XP',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.darkGreen,
                                 ),
                               ),
-                              Text(
-                                '${(candidate.score * 100).toStringAsFixed(0)}%',
-                                style: TextStyle(color: _confidenceColor(candidate.score), fontSize: 11),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -1129,75 +1084,6 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
                           ],
                         ),
                       ),
-                  ],
-
-                  if (widget.result.candidates.length > 1) ...[
-                    Text(
-                      l10n?.otherCandidates ?? 'Botanical candidates',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 8),
-                    ...widget.result.candidates.take(4).map(
-                      (c) {
-                        final isSelected = c.scientificName == candidate?.scientificName;
-                        return GestureDetector(
-                          onTap: _isSaving || _isSaved ? null : () => setState(() => _selectedCandidate = c),
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.mintLight : Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: isSelected ? AppColors.sageGreen : AppColors.border,
-                                width: isSelected ? 2 : 1,
-                              ),
-                              boxShadow: [
-                                BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 6),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                if (isSelected)
-                                  const Padding(
-                                    padding: EdgeInsets.only(right: 8),
-                                    child: Icon(Icons.check_circle_rounded, color: AppColors.darkGreen, size: 18),
-                                  ),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        c.commonName.isNotEmpty ? c.commonName : c.scientificName,
-                                        style: TextStyle(
-                                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                          fontSize: 13,
-                                          color: isSelected ? AppColors.darkGreen : null,
-                                        ),
-                                      ),
-                                      Text(
-                                        c.scientificName,
-                                        style: const TextStyle(
-                                          fontStyle: FontStyle.italic,
-                                          fontSize: 11,
-                                          color: AppColors.secondaryText,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${(c.score * 100).toStringAsFixed(0)}%',
-                                  style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
                   ],
 
                   // ─── Save / Loading Progress / Saved Success ──────────────

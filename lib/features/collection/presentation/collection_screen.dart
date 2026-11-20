@@ -526,7 +526,6 @@ class _GridCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dateFormat = DateFormat('MMM d');
-    final confidencePct = (discovery.identificationScore * 100).toStringAsFixed(0);
 
     return GestureDetector(
       onTap: () {
@@ -602,22 +601,6 @@ class _GridCard extends ConsumerWidget {
                                 isFr: Localizations.localeOf(context).languageCode == 'fr',
                               )
                           : null,
-                    ),
-                  ),
-                  // Confidence tag
-                  Positioned(
-                    bottom: 6,
-                    left: 6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withAlpha(150),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '$confidencePct%',
-                        style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700),
-                      ),
                     ),
                   ),
                   // XP bonus chip
@@ -1150,11 +1133,6 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                               style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${(_d.identificationScore * 100).toStringAsFixed(0)}% • ${_d.confidenceLabel}',
-                            style: const TextStyle(color: Colors.white70, fontSize: 11),
-                          ),
                         ],
                       ),
                     ],
@@ -1396,7 +1374,7 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                 ),
                 const SizedBox(height: 8),
 
-                // Confidence pill & Date
+                // Discovered Date pill
                 Row(
                   children: [
                     Container(
@@ -1405,15 +1383,17 @@ class _DetailState extends ConsumerState<_DiscoveryDetailPage> {
                         color: AppColors.mintGreen.withAlpha(70),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Text(
-                        '${(_d.identificationScore * 100).toStringAsFixed(0)}% • ${_d.confidenceLabel}',
-                        style: const TextStyle(color: AppColors.sageGreen, fontWeight: FontWeight.w700, fontSize: 12),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.calendar_today_rounded, size: 12, color: AppColors.sageGreen),
+                          const SizedBox(width: 5),
+                          Text(
+                            dateFormat.format(_d.discoveredAt),
+                            style: const TextStyle(color: AppColors.sageGreen, fontWeight: FontWeight.w700, fontSize: 12),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      dateFormat.format(_d.discoveredAt),
-                      style: const TextStyle(color: AppColors.mutedText, fontSize: 12),
                     ),
                   ],
                 ),
