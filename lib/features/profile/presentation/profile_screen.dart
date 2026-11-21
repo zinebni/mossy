@@ -30,6 +30,7 @@ class ProfileScreen extends ConsumerWidget {
     ref.listen<Achievement?>(latestBadgeAwardProvider, (prev, next) {
       if (next != null) {
         BadgeUnlockAlert.show(context, achievement: next, isFr: isFr);
+        ref.read(latestBadgeAwardProvider.notifier).state = null;
       }
     });
 

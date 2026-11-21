@@ -34,8 +34,11 @@ class Achievement {
     'ach-curious-explorer': 'Explorateur Curieux',
     'ach-flower-collector': 'Collectionneur de Fleurs',
     'ach-nature-enthusiast': 'Passionné de Nature',
+    'ach-botanical-expert': 'Expert Botanique',
     'ach-adventure-seeker': 'Aventurier en Herbe',
+    'ach-mission-master': 'Maître des Missions',
     'ach-garden-keeper': 'Gardien du Jardin',
+    'ach-master-gardener': 'Maître Jardinier',
     'ach-botanist': 'Apprenti Botaniste',
   };
 
@@ -45,9 +48,12 @@ class Achievement {
     'ach-curious-explorer': 'Découvrez et identifiez 5 spécimens de plantes différents.',
     'ach-flower-collector': 'Rassemblez 10 découvertes végétales dans votre carnet nature.',
     'ach-nature-enthusiast': 'Atteignez le cap remarquable de 25 découvertes de plantes.',
-    'ach-adventure-seeker': 'Accomplissez 5 missions d\'exploration et quêtes quotidiennes.',
-    'ach-garden-keeper': 'Développez votre sanctuaire virtuel jusqu\'au niveau 3.',
-    'ach-botanist': 'Identifiez des plantes issues de 5 familles différentes.',
+    'ach-botanical-expert': 'Constituez une collection magistrale de 50 découvertes de plantes.',
+    'ach-adventure-seeker': 'Accomplissez 3 missions d\'exploration ou quêtes nature.',
+    'ach-mission-master': 'Accomplissez avec succès 15 défis et missions nature.',
+    'ach-garden-keeper': 'Développez votre sanctuaire virtuel jusqu\'au niveau 2.',
+    'ach-master-gardener': 'Nourrissez votre sanctuaire végétal jusqu\'au niveau 5.',
+    'ach-botanist': 'Identifiez des plantes issues de 3 familles botaniques différentes.',
   };
 
   /// Returns localized title based on active language.
@@ -73,8 +79,11 @@ class Achievement {
       case 'ach-curious-explorer': return '🧭';
       case 'ach-flower-collector': return '🌸';
       case 'ach-nature-enthusiast': return '🌲';
+      case 'ach-botanical-expert': return '🌳';
       case 'ach-adventure-seeker': return '🎒';
+      case 'ach-mission-master': return '🎖️';
       case 'ach-garden-keeper': return '🏡';
+      case 'ach-master-gardener': return '🌺';
       case 'ach-botanist': return '🔬';
       default: return '🏆';
     }

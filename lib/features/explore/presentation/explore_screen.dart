@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
@@ -10,11 +11,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/mossy_card.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/quest_service.dart';
+import '../../../services/sound_service.dart';
 import '../../../services/supabase_service.dart';
 import '../../../shared/models/discovery.dart';
 import '../../../shared/models/discovery_rarity.dart';
-import '../../../shared/models/garden_state.dart';
-import '../../../shared/widgets/celebration_dialogs.dart';
 import '../../../shared/widgets/rarity_widgets.dart';
 import '../../../shared/models/identification_result.dart';
 import '../../../shared/models/plant_candidate.dart';
@@ -22,6 +22,7 @@ import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/widgets/mascot/mascot_expression.dart';
 import '../../../shared/widgets/mascot/mascot_with_accessory.dart';
+import '../../collection/presentation/collection_screen.dart';
 
 // ============================================================================
 // EXPLORE STATE & NOTIFIER
@@ -91,6 +92,12 @@ class ExploreNotifier extends StateNotifier<ExploreState> {
         image.name,
         language: currentLocale.languageCode,
       );
+
+      final hasMatch = (result.bestMatch != null) || (result.candidates.isNotEmpty);
+      if (hasMatch) {
+        SoundService.instance.playRecognitionSound().catchError((_) {});
+        HapticFeedback.mediumImpact().catchError((_) {});
+      }
 
       state = state.copyWith(
         isIdentifying: false,
@@ -724,13 +731,73 @@ class _IdentificationResultScreen extends ConsumerStatefulWidget {
 class _IdentificationResultScreenState extends ConsumerState<_IdentificationResultScreen> {
   bool _isSaving = false;
   bool _isSaved = false;
-  String _statusMessage = 'Saving to Journal...';
+  String? _errorMessage;
+  String _statusMessage = 'Examining specimen...';
+  int _msgIndex = 0;
+  Timer? _msgTimer;
+
+  static const List<String> _loreMessagesEn = [
+    '🌿 Plant spotted! Mossy is examining your specimen...',
+    '✨ Consulting botanical wisdom & forest lore...',
+    '📖 Weaving your unique Nature Journal story...',
+    '🌱 Preparing kid-friendly growing tips & safe explorer advice...',
+    '🎨 Assembling your high-resolution specimen card...',
+    '🎉 Almost ready to add to your collection!',
+  ];
+
+  static const List<String> _loreMessagesFr = [
+    '🌿 Plante repérée ! Mossy examine votre spécimen...',
+    '✨ Consultation de la sagesse botanique et des secrets de la forêt...',
+    '📖 Rédaction de votre histoire dans le Journal de Nature...',
+    '🌱 Préparation des astuces de culture et conseils d\'explorateur...',
+    '🎨 Assemblage de votre fiche de spécimen haute résolution...',
+    '🎉 Presque prêt pour votre collection !',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final candidate = widget.result.bestMatch ??
+        (widget.result.candidates.isNotEmpty ? widget.result.candidates.first : null);
+
+    if (candidate != null) {
+      // 1. Immediate recognition feedback: joyful chime sound + haptic vibration
+      SoundService.instance.playRecognitionSound().catchError((_) {});
+      HapticFeedback.mediumImpact().catchError((_) {});
+
+      // 2. Start cycling friendly wisdom generation messages
+      _startCyclingMessages();
+
+      // 3. Automatically craft wisdom & save discovery without manual button tap
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_isSaving && !_isSaved) {
+          _saveDiscovery(candidate);
+        }
+      });
+    }
+  }
+
+  void _startCyclingMessages() {
+    _msgTimer?.cancel();
+    _msgTimer = Timer.periodic(const Duration(milliseconds: 2300), (_) {
+      if (mounted) {
+        setState(() => _msgIndex++);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _msgTimer?.cancel();
+    super.dispose();
+  }
 
   Future<void> _saveDiscovery(PlantCandidate candidate) async {
     if (_isSaving || _isSaved) return;
 
     setState(() {
       _isSaving = true;
+      _errorMessage = null;
       _statusMessage = 'Archiving specimen photo...';
     });
 
@@ -843,70 +910,39 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
       final newGardenLevel = newGardenState?.gardenLevel ?? oldGardenLevel;
       final gardenLeveledUp = newGardenLevel > oldGardenLevel;
       final earnedBadge = ref.read(latestBadgeAwardProvider);
+      if (earnedBadge != null) {
+        ref.read(latestBadgeAwardProvider.notifier).state = null;
+      }
 
       if (!mounted) return;
-      final l10n = AppLocalizations.of(context);
-      final isFr = ref.read(localeProvider).languageCode == 'fr' ||
-          Localizations.localeOf(context).languageCode == 'fr' ||
-          l10n?.home == 'Accueil';
 
       setState(() {
         _isSaving = false;
         _isSaved = true;
       });
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
+      // Clear the explore state so popping back from the detail view returns to a fresh Explore screen
+      ref.read(exploreProvider.notifier).reset();
 
-        void showFollowUpAlerts() {
-          if (!mounted) return;
-          if (earnedBadge != null) {
-            BadgeUnlockAlert.show(context, achievement: earnedBadge, isFr: isFr);
-            ref.read(latestBadgeAwardProvider.notifier).state = null;
-          } else if (gardenLeveledUp) {
-            GardenUnlockAlert.show(
-              context,
-              level: newGardenLevel,
-              unlockedItems: GardenState.levelItemUnlocks[newGardenLevel] ?? const [],
-              isFr: isFr,
-            );
-          }
-        }
-
-        RarityCelebration.show(
-          context,
-          rarity,
-          isFr: isFr,
-          force: true,
-          onDone: showFollowUpAlerts,
-        );
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isQuestMatch
-                ? (isFr
-                    ? '🎉 Plante enregistrée & Défi validé ! +${activeQuest.xpReward + earnedPoints} points'
-                    : '🎉 Plant saved & Challenge completed! +${activeQuest.xpReward + earnedPoints} points')
-                : (isFr
-                    ? '🌿 Découverte enregistrée dans votre Journal ! +$earnedPoints points'
-                    : '🌿 Discovery saved to your Journal! +$earnedPoints points'),
+      // Automatically navigate directly to the new Discovery Card without requiring an extra manual tap!
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => DiscoveryDetailPage(
+            discovery: discovery,
+            autoCelebrate: true,
+            earnedBadge: earnedBadge,
+            gardenLeveledUp: gardenLeveledUp,
+            newGardenLevel: newGardenLevel,
           ),
-          backgroundColor: AppColors.sageGreen,
-          duration: const Duration(seconds: 4),
         ),
       );
     } catch (e) {
       debugPrint('[Mossy] Error saving discovery: $e');
       if (mounted) {
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not save: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        setState(() {
+          _isSaving = false;
+          _errorMessage = e.toString();
+        });
       }
     }
   }
@@ -914,308 +950,294 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isFr = l10n?.home == 'Accueil';
+    final isFr = ref.read(localeProvider).languageCode == 'fr' ||
+        Localizations.localeOf(context).languageCode == 'fr' ||
+        l10n?.home == 'Accueil';
     final candidate = widget.result.bestMatch ??
         (widget.result.candidates.isNotEmpty ? widget.result.candidates.first : null);
-    final candidateRarity = candidate != null
-        ? RarityEngine.assign(
-            scientificName: candidate.scientificName,
-            family: candidate.family,
-          )
-        : DiscoveryRarity.common;
+
+    if (candidate == null) {
+      return Scaffold(
+        backgroundColor: AppColors.cream,
+        appBar: AppBar(
+          backgroundColor: AppColors.cream,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: AppColors.darkGreen),
+            onPressed: () => ref.read(exploreProvider.notifier).reset(),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const MascotWithAccessory(
+                  expression: MascotExpression.curious,
+                  accessory: MascotAccessory.magnifyingGlass,
+                  size: 130,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  isFr ? 'Aucune plante reconnue' : 'No plant detected',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkGreen,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  isFr
+                      ? 'Mossy n\'a pas pu identifier clairement cette plante. Rapprochez-vous avec une belle lumière naturelle sur les feuilles ou les fleurs !'
+                      : 'Mossy could not clearly identify a plant in this photo. Try taking a closer, well-lit photo of the leaves or flowers!',
+                  style: const TextStyle(fontSize: 14, color: AppColors.secondaryText, height: 1.4),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.camera_alt_rounded),
+                  label: Text(isFr ? 'Prendre une autre photo' : 'Try Another Photo'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.sageGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  onPressed: () => ref.read(exploreProvider.notifier).reset(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final candidateRarity = RarityEngine.assign(
+      scientificName: candidate.scientificName,
+      family: candidate.family,
+    );
     final activeQuest = ref.watch(activeQuestProvider);
     final bool isQuestMatch = activeQuest != null &&
-        candidate != null &&
         activeQuest.matchesPlant(
           family: candidate.family,
           scientificName: candidate.scientificName,
           commonName: candidate.commonName,
         );
 
+    if (_errorMessage != null && !_isSaved) {
+      return Scaffold(
+        backgroundColor: AppColors.cream,
+        appBar: AppBar(
+          backgroundColor: AppColors.cream,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: AppColors.darkGreen),
+            onPressed: () => ref.read(exploreProvider.notifier).reset(),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const MascotWithAccessory(
+                  expression: MascotExpression.surprised,
+                  accessory: MascotAccessory.magnifyingGlass,
+                  size: 120,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  isFr ? 'Oups ! Petit imprévu' : 'Oops! Something went wrong',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkGreen,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _errorMessage!,
+                  style: const TextStyle(fontSize: 13, color: AppColors.error),
+                  textAlign: TextAlign.center,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => ref.read(exploreProvider.notifier).reset(),
+                      child: Text(isFr ? 'Annuler' : 'Cancel'),
+                    ),
+                    const SizedBox(width: 14),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: Text(isFr ? 'Réessayer' : 'Retry'),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.sageGreen),
+                      onPressed: () => _saveDiscovery(candidate),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final loreMessages = isFr ? _loreMessagesFr : _loreMessagesEn;
+
     return PopScope(
       canPop: !_isSaving,
       child: Scaffold(
         backgroundColor: AppColors.cream,
-        body: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              expandedHeight: 240,
-              pinned: true,
-              backgroundColor: AppColors.cream,
-              foregroundColor: AppColors.darkGreen,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: _isSaving ? null : () => ref.read(exploreProvider.notifier).reset(),
-              ),
-              title: Text(l10n?.identifyPlant ?? 'Identification Result'),
-              flexibleSpace: FlexibleSpaceBar(
-                background: Stack(
-                  fit: StackFit.expand,
+        appBar: AppBar(
+          backgroundColor: AppColors.cream,
+          elevation: 0,
+          foregroundColor: AppColors.darkGreen,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => ref.read(exploreProvider.notifier).reset(),
+          ),
+          title: Text(
+            isFr ? 'Création de la découverte...' : 'Crafting Discovery...',
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+          ),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ─── 1. Instant Recognition Pill / Alert ─────────────────────
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.mintLight,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: candidateRarity.color.withAlpha(160), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: candidateRarity.color.withAlpha(35),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
                   children: [
-                    Image.file(File(widget.imageFile.path), fit: BoxFit.cover),
                     Container(
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, AppColors.cream.withAlpha(230)],
-                        ),
+                        color: candidateRarity.color.withAlpha(40),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.auto_awesome_rounded,
+                        color: candidateRarity.color,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isFr ? '🎉 Plante reconnue avec succès !' : '🎉 Plant spotted successfully!',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              color: AppColors.darkGreen,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isFr
+                                ? 'Mossy prépare votre fiche dans le journal...'
+                                : 'Mossy is crafting your Nature Journal entry...',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.secondaryText,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.all(20),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  if (candidate != null) ...[
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          candidate.commonName.isNotEmpty ? candidate.commonName : candidate.scientificName,
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.darkGreen,
-                              ),
+              ).animate().scale(duration: 350.ms, curve: Curves.easeOutBack),
+
+              const SizedBox(height: 16),
+
+              // ─── 2. Lively Specimen Preview Card ──────────────────────────
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: candidateRarity.color.withAlpha(120), width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: candidateRarity.color.withAlpha(40),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                      child: AspectRatio(
+                        aspectRatio: 16 / 10,
+                        child: Image.file(
+                          File(widget.imageFile.path),
+                          fit: BoxFit.cover,
                         ),
-                        Text(
-                          candidate.scientificName,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontStyle: FontStyle.italic,
-                                color: AppColors.secondaryText,
-                              ),
-                        ),
-                        if (candidate.family.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              'Family: ${candidate.family}',
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            candidate.commonName.isNotEmpty ? candidate.commonName : candidate.scientificName,
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.darkGreen,
+                                ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            candidate.scientificName,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontStyle: FontStyle.italic,
+                                  color: AppColors.secondaryText,
+                                ),
+                          ),
+                          if (candidate.family.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              isFr ? 'Famille : ${candidate.family}' : 'Family: ${candidate.family}',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
                             ),
-                          ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            RarityBadge(rarity: candidateRarity, isFr: isFr),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: AppColors.butterYellow.withAlpha(180),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '+${candidateRarity.totalPoints} XP',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.darkGreen,
-                                ),
-                              ),
-                            ),
                           ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-
-                  if (activeQuest != null && candidate != null) ...[
-                    if (isQuestMatch)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 20),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.mintLight,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.sageGreen, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.sageGreen.withAlpha(40),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.sageGreen,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(Icons.verified_rounded,
-                                  color: Colors.white, size: 24),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        isFr
-                                            ? '🎯 Correspondance Défi !'
-                                            : '🎯 Challenge Match Found!',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 14,
-                                          color: AppColors.darkGreen,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.butterYellow,
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          '+${activeQuest.xpReward} XP',
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.darkGreen,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    isFr
-                                        ? 'Cette plante remplit les critères de « ${activeQuest.title(true)} » ! Enregistrez-la pour valider votre défi.'
-                                        : 'This plant fulfills "${activeQuest.title(false)}"! Save it to complete your quest.',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.secondaryText,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ).animate().scale(duration: 350.ms, curve: Curves.easeOutBack)
-                    else
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 20),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.borderLight),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.info_outline_rounded,
-                                size: 20, color: AppColors.mutedText),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                isFr
-                                    ? 'Ne correspond pas au défi « ${activeQuest.title(true)} » (${activeQuest.targetRequirementLabel(true)}). Vous pouvez tout de même l\'enregistrer !'
-                                    : 'Does not match active challenge "${activeQuest.title(false)}" (${activeQuest.targetRequirementLabel(false)}). You can still save it!',
-                                style: const TextStyle(
-                                    fontSize: 11, color: AppColors.secondaryText),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-
-                  // ─── Save / Loading Progress / Saved Success ──────────────
-                  if (_isSaving) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: AppColors.darkGreen,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.darkGreen.withAlpha(50),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Flexible(
-                            child: Text(
-                              _statusMessage,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ] else if (_isSaved) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: AppColors.mintLight,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: candidateRarity.color.withAlpha(160), width: 1.5),
-                        boxShadow: [
-                          BoxShadow(color: candidateRarity.color.withAlpha(30), blurRadius: 8, offset: const Offset(0, 2)),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.check_circle_rounded, color: AppColors.darkGreen, size: 22),
-                              const SizedBox(width: 8),
-                              Text(
-                                l10n?.saveToCollection != null ? '${l10n!.saveToCollection} ✓' : 'Saved to your Journal! ✓',
-                                style: const TextStyle(
-                                  color: AppColors.darkGreen,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
                           const SizedBox(height: 10),
                           Wrap(
-                            alignment: WrapAlignment.center,
-                            crossAxisAlignment: WrapCrossAlignment.center,
                             spacing: 8,
                             runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               RarityBadge(rarity: candidateRarity, isFr: isFr),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: AppColors.butterYellow,
                                   borderRadius: BorderRadius.circular(8),
@@ -1223,38 +1245,9 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
                                 child: Text(
                                   '+${candidateRarity.totalPoints} XP',
                                   style: const TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w800,
                                     color: AppColors.darkGreen,
-                                  ),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () => RarityCelebration.show(context, candidateRarity, isFr: isFr, force: true),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: candidateRarity.color.withAlpha(150)),
-                                    boxShadow: [
-                                      BoxShadow(color: candidateRarity.color.withAlpha(40), blurRadius: 4, offset: const Offset(0, 1)),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text('🎉', style: TextStyle(fontSize: 12)),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        isFr ? 'Célébrer !' : 'Celebrate!',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 12,
-                                          color: candidateRarity.color,
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 ),
                               ),
@@ -1263,66 +1256,119 @@ class _IdentificationResultScreenState extends ConsumerState<_IdentificationResu
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.collections_bookmark_rounded, size: 18),
-                            label: Text(l10n?.myCollection ?? 'View Journal'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.darkGreen,
-                              side: const BorderSide(color: AppColors.sageGreen, width: 1.5),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            ),
-                            onPressed: () {
-                              ref.read(exploreProvider.notifier).reset();
-                              context.go('/collection');
-                            },
+                  ],
+                ),
+              ),
+
+              if (activeQuest != null && isQuestMatch) ...[
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.mintLight,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.sageGreen, width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.verified_rounded, color: AppColors.sageGreen, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          isFr
+                              ? '🎯 Correspond au défi « ${activeQuest.title(true)} » (+${activeQuest.xpReward} XP) !'
+                              : '🎯 Matches challenge "${activeQuest.title(false)}" (+${activeQuest.xpReward} XP)!',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: AppColors.darkGreen,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.camera_alt_rounded, size: 18),
-                            label: Text(l10n?.explore ?? 'Explore More'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.sageGreen,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            ),
-                            onPressed: () => ref.read(exploreProvider.notifier).reset(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ] else ...[
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.bookmark_add_rounded),
-                        label: Text('${l10n?.saveToCollection ?? 'Save to Collection'} (+${candidateRarity.totalPoints} XP)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.sageGreen,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        onPressed: candidate != null ? () => _saveDiscovery(candidate) : null,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextButton(
-                      onPressed: () => ref.read(exploreProvider.notifier).reset(),
-                      child: Text(l10n?.identifyAnother ?? 'Identify Another Plant'),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 20),
+
+              // ─── 3. Engaging Wisdom Generation Activity Box ───────────────
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: AppColors.borderLight),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.darkGreen.withAlpha(20),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
                     ),
                   ],
-                ]),
+                ),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      child: const MascotWithAccessory(
+                        expression: MascotExpression.curious,
+                        accessory: MascotAccessory.magnifyingGlass,
+                        size: 95,
+                      ),
+                    ).animate(onPlay: (c) => c.repeat(reverse: true)).moveY(begin: 0, end: -6, duration: 1200.ms),
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: const LinearProgressIndicator(
+                        minHeight: 8,
+                        backgroundColor: AppColors.mintGreen,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.sageGreen),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 350),
+                      child: Text(
+                        loreMessages[_msgIndex % loreMessages.length],
+                        key: ValueKey(_msgIndex % loreMessages.length),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.darkGreen,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _statusMessage,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.mutedText,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 16),
+
+              // ─── 4. Cancel Button ─────────────────────────────────────────
+              Center(
+                child: TextButton.icon(
+                  icon: const Icon(Icons.close_rounded, size: 16),
+                  label: Text(
+                    isFr ? 'Annuler' : 'Cancel',
+                    style: const TextStyle(color: AppColors.secondaryText),
+                  ),
+                  onPressed: () => ref.read(exploreProvider.notifier).reset(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

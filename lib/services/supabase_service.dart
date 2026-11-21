@@ -35,6 +35,17 @@ class SupabaseService {
     return client?.from(table);
   }
 
+  /// Calls a Supabase RPC database function safely, or returns null in demo mode.
+  Future<dynamic> rpc(String functionName, {Map<String, dynamic>? params}) async {
+    if (_isDemoMode || client == null) return null;
+    try {
+      return await client!.rpc(functionName, params: params);
+    } catch (e) {
+      debugPrint('[Mossy] Supabase RPC call error for "$functionName": $e');
+      rethrow;
+    }
+  }
+
   /// Initialize Supabase from environment variables.
   /// Falls back to Demo Mode if keys are missing or initialization fails.
   Future<void> initialize() async {

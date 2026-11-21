@@ -25,6 +25,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final isFr = currentLocale.languageCode == 'fr';
     final languageName = isFr ? 'Français' : 'English';
     final l10n = AppLocalizations.of(context);
+    final musicEnabled = ref.watch(backgroundMusicProvider);
+    final soundEnabled = ref.watch(soundEffectsProvider);
 
     return PopScope(
       canPop: context.canPop(),
@@ -65,7 +67,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _sectionLabel(isFr ? 'Préférences' : 'Preferences'),
           MossyCard(
             child: Column(children: [
-              _SwitchTile(icon: Icons.notifications_outlined, title: l10n?.notifications ?? 'Notifications', value: _notificationsEnabled, onChanged: (v) => setState(() => _notificationsEnabled = v)),
+              _SwitchTile(
+                icon: Icons.music_note_rounded,
+                title: isFr ? 'Musique d\'ambiance' : 'Background Music',
+                subtitle: isFr ? 'Jingle doux et apaisant de la nature' : 'Soft, cozy nature jingle',
+                value: musicEnabled,
+                onChanged: (v) => ref.read(backgroundMusicProvider.notifier).setEnabled(v),
+              ),
+              _Divider(),
+              _SwitchTile(
+                icon: Icons.volume_up_rounded,
+                title: isFr ? 'Effets sonores' : 'Sound Effects',
+                subtitle: isFr ? 'Carillons et sons de touches' : 'Chimes and touch feedback',
+                value: soundEnabled,
+                onChanged: (v) => ref.read(soundEffectsProvider.notifier).setEnabled(v),
+              ),
+              _Divider(),
+              _SwitchTile(
+                icon: Icons.notifications_outlined,
+                title: l10n?.notifications ?? 'Notifications',
+                value: _notificationsEnabled,
+                onChanged: (v) => setState(() => _notificationsEnabled = v),
+              ),
               _Divider(),
               _ListTile(
                 icon: Icons.language_rounded,
@@ -255,9 +278,16 @@ class _ListTile extends StatelessWidget {
 class _SwitchTile extends StatelessWidget {
   final IconData icon;
   final String title;
+  final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
-  const _SwitchTile({required this.icon, required this.title, required this.value, required this.onChanged});
+  const _SwitchTile({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -266,7 +296,26 @@ class _SwitchTile extends StatelessWidget {
       child: Row(children: [
         Icon(icon, color: AppColors.sageGreen, size: 22),
         const SizedBox(width: 14),
-        Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.darkGreen))),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  color: AppColors.darkGreen,
+                ),
+              ),
+              if (subtitle != null)
+                Text(
+                  subtitle!,
+                  style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                ),
+            ],
+          ),
+        ),
         Switch(value: value, onChanged: onChanged, activeThumbColor: AppColors.sageGreen),
       ]),
     );

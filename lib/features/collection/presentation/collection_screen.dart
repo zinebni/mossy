@@ -12,6 +12,9 @@ import '../../../core/widgets/mossy_card.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/image_storage_service.dart';
 import '../../../shared/models/discovery.dart';
+import '../../../shared/models/achievement.dart';
+import '../../../shared/models/garden_state.dart';
+import '../../../shared/widgets/celebration_dialogs.dart';
 import '../../../shared/widgets/rarity_widgets.dart';
 import '../../../shared/providers/app_providers.dart';
 import '../../../shared/providers/auth_provider.dart';
@@ -840,8 +843,19 @@ class _ListCard extends ConsumerWidget {
 // ─── Discovery Detail Screen (Journal Entry) ─────────────────────────────────
 class DiscoveryDetailPage extends ConsumerStatefulWidget {
   final Discovery discovery;
+  final bool autoCelebrate;
+  final Achievement? earnedBadge;
+  final bool gardenLeveledUp;
+  final int? newGardenLevel;
 
-  const DiscoveryDetailPage({super.key, required this.discovery});
+  const DiscoveryDetailPage({
+    super.key,
+    required this.discovery,
+    this.autoCelebrate = false,
+    this.earnedBadge,
+    this.gardenLeveledUp = false,
+    this.newGardenLevel,
+  });
 
   @override
   ConsumerState<DiscoveryDetailPage> createState() => _DetailState();
@@ -859,6 +873,43 @@ class _DetailState extends ConsumerState<DiscoveryDetailPage> {
     super.initState();
     _d = widget.discovery;
     _notesCtrl = TextEditingController(text: _d.personalNotes ?? '');
+
+    if (widget.autoCelebrate) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        // Delay slightly (350ms) so navigation route transition finishes cleanly
+        // and fireworks celebration is not clipped or swallowed.
+        Future.delayed(const Duration(milliseconds: 350), () {
+          if (!mounted) return;
+          final l10n = AppLocalizations.of(context);
+          final isFr = ref.read(localeProvider).languageCode == 'fr' ||
+              Localizations.localeOf(context).languageCode == 'fr' ||
+              l10n?.home == 'Accueil';
+
+          void showFollowUpAlerts() {
+            if (!mounted) return;
+            if (widget.earnedBadge != null) {
+              BadgeUnlockAlert.show(context, achievement: widget.earnedBadge!, isFr: isFr);
+            } else if (widget.gardenLeveledUp && widget.newGardenLevel != null) {
+              GardenUnlockAlert.show(
+                context,
+                level: widget.newGardenLevel!,
+                unlockedItems: GardenState.levelItemUnlocks[widget.newGardenLevel!] ?? const [],
+                isFr: isFr,
+              );
+            }
+          }
+
+          RarityCelebration.show(
+            context,
+            widget.discovery.rarity,
+            isFr: isFr,
+            force: true,
+            onDone: showFollowUpAlerts,
+          );
+        });
+      });
+    }
   }
 
   @override

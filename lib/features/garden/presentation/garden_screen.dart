@@ -66,6 +66,12 @@ class _GardenScreenState extends ConsumerState<GardenScreen>
       vsync: this,
       duration: const Duration(seconds: 24),
     )..repeat();
+
+    // Start background music loop for cozy sanctuary ambiance
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      SoundService.instance.startBackgroundMusic();
+    });
   }
 
   @override
@@ -243,6 +249,9 @@ class _GardenScreenState extends ConsumerState<GardenScreen>
         Localizations.localeOf(context).languageCode == 'fr' ||
         l10n?.home == 'Accueil';
     final gardenAsync = ref.watch(gardenStateProvider);
+    final isMusicEnabled = ref.watch(backgroundMusicProvider);
+    final topPadding = MediaQuery.paddingOf(context).top;
+    final topSafeInset = topPadding > 0 ? topPadding : 16.0;
 
     // Listen to newly awarded achievements
     ref.listen<Achievement?>(latestBadgeAwardProvider, (prev, next) {
@@ -281,7 +290,7 @@ class _GardenScreenState extends ConsumerState<GardenScreen>
         error: (e, _) => Center(child: Text('$e')),
         data: (garden) => CustomScrollView(slivers: [
           SliverAppBar(
-            expandedHeight: 330,
+            expandedHeight: 330 + (topPadding > 0 ? topPadding : 0),
             pinned: false,
             backgroundColor: AppColors.mintGreen.withAlpha(60),
             flexibleSpace: FlexibleSpaceBar(
@@ -306,9 +315,9 @@ class _GardenScreenState extends ConsumerState<GardenScreen>
                   ),
                 ),
 
-                // Subtle Tap Hint on the canvas
+                // Subtle Tap Hint on the canvas (safely placed below status bar / notch)
                 Positioned(
-                  top: 16,
+                  top: topSafeInset + 8,
                   left: 16,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -352,13 +361,63 @@ class _GardenScreenState extends ConsumerState<GardenScreen>
                   ),
                 ),
 
-                // Top right level badge & celebratory button
+                // Top right level badge & celebratory button (safely placed below status bar / notch)
                 Positioned(
-                  top: 16,
+                  top: topSafeInset + 8,
                   right: 16,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Cozy Background Music Toggle Pill
+                      GestureDetector(
+                        onTap: () {
+                          ref.read(backgroundMusicProvider.notifier).toggle();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha(220),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withAlpha(20), blurRadius: 4),
+                            ],
+                            border: Border.all(
+                              color: isMusicEnabled
+                                  ? AppColors.sageGreen.withAlpha(120)
+                                  : AppColors.border,
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isMusicEnabled
+                                    ? Icons.music_note_rounded
+                                    : Icons.music_off_rounded,
+                                size: 15,
+                                color: isMusicEnabled
+                                    ? AppColors.sageGreen
+                                    : AppColors.mutedText,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                isMusicEnabled
+                                    ? (isFr ? 'Musique' : 'Music')
+                                    : (isFr ? 'Muet' : 'Muted'),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isMusicEnabled
+                                      ? AppColors.darkGreen
+                                      : AppColors.mutedText,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
                       // Replay celebration sound & dialog
                       GestureDetector(
                         onTap: () => _triggerCelebration(context, garden, isFr),

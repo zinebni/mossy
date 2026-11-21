@@ -1,6 +1,7 @@
 ﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../services/sound_service.dart';
 import '../models/discovery_rarity.dart';
 
 /// Standout, playful badge showing a rarity tier (emoji + label + optional sparkle/XP).
@@ -264,8 +265,9 @@ class RarityCelebration extends StatefulWidget {
       onDone?.call();
       return;
     }
-    // Gentle haptic tap (silently ignored on platforms without support).
+    // Gentle haptic tap and celebration sound
     HapticFeedback.lightImpact().catchError((_) {});
+    SoundService.instance.playCelebrationSound().catchError((_) {});
     late final OverlayEntry entry;
     var removed = false;
     void remove() {

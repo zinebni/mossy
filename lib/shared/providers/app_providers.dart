@@ -97,6 +97,68 @@ final gardenServiceProvider = Provider<GardenService>((ref) {
 /// Provider for sound effects service.
 final soundServiceProvider = Provider<SoundService>((ref) => SoundService.instance);
 
+/// Notifier for cozy background music mute/enabled state.
+class BackgroundMusicNotifier extends StateNotifier<bool> {
+  final SoundService _soundService;
+
+  BackgroundMusicNotifier(this._soundService) : super(!_soundService.isMusicMuted) {
+    _loadState();
+  }
+
+  Future<void> _loadState() async {
+    await _soundService.initPreferences();
+    if (mounted) state = !_soundService.isMusicMuted;
+  }
+
+  Future<void> toggle() async {
+    await _soundService.toggleMusic();
+    if (mounted) state = !_soundService.isMusicMuted;
+  }
+
+  Future<void> setEnabled(bool enabled) async {
+    await _soundService.setMusicMuted(!enabled);
+    if (mounted) state = enabled;
+  }
+}
+
+/// Global provider for background music state.
+final backgroundMusicProvider =
+    StateNotifierProvider<BackgroundMusicNotifier, bool>((ref) {
+  final sound = ref.watch(soundServiceProvider);
+  return BackgroundMusicNotifier(sound);
+});
+
+/// Notifier for sound effects mute/enabled state.
+class SoundEffectsNotifier extends StateNotifier<bool> {
+  final SoundService _soundService;
+
+  SoundEffectsNotifier(this._soundService) : super(!_soundService.isMuted) {
+    _loadState();
+  }
+
+  Future<void> _loadState() async {
+    await _soundService.initPreferences();
+    if (mounted) state = !_soundService.isMuted;
+  }
+
+  Future<void> toggle() async {
+    await _soundService.toggleSound();
+    if (mounted) state = !_soundService.isMuted;
+  }
+
+  Future<void> setEnabled(bool enabled) async {
+    await _soundService.setSoundMuted(!enabled);
+    if (mounted) state = enabled;
+  }
+}
+
+/// Global provider for sound effects state.
+final soundEffectsProvider =
+    StateNotifierProvider<SoundEffectsNotifier, bool>((ref) {
+  final sound = ref.watch(soundServiceProvider);
+  return SoundEffectsNotifier(sound);
+});
+
 /// Provider for points reward tracking.
 final pointsServiceProvider = Provider<PointsService>((ref) {
   final isDemo = ref.watch(demoModeProvider);
@@ -163,7 +225,10 @@ class DiscoveriesNotifier extends StateNotifier<AsyncValue<List<Discovery>>> {
     final previousState = state;
     try {
       final saved = await _service.saveDiscovery(discovery);
-      state = state.whenData((list) => [saved, ...list.where((d) => d.id != saved.id)]);
+      if (!mounted) return;
+      final currentList = state.value ?? [];
+      final updatedList = [saved, ...currentList.where((d) => d.id != saved.id)];
+      state = AsyncValue.data(updatedList);
 
       // Quest integration — non-critical: a failure must not break the save.
       try {
@@ -171,8 +236,25 @@ class DiscoveriesNotifier extends StateNotifier<AsyncValue<List<Discovery>>> {
       } catch (e) {
         debugPrint('[Mossy] Quest update skipped (non-critical): $e');
       }
+
+      // Check achievement milestones immediately on discovery save
+      if (mounted) {
+        try {
+          final distinctFamilies = updatedList
+              .map((d) => d.family.trim().toLowerCase())
+              .where((f) => f.isNotEmpty)
+              .toSet()
+              .length;
+          await _ref.read(achievementsProvider.notifier).checkProgression(
+            discoveryCount: updatedList.length,
+            distinctFamilyCount: distinctFamilies,
+          );
+        } catch (e) {
+          debugPrint('[Mossy] Achievement check on save error: $e');
+        }
+      }
     } catch (e) {
-      state = previousState;
+      if (mounted) state = previousState;
       debugPrint('[Mossy] Failed to save discovery: $e');
       rethrow;
     }
@@ -227,8 +309,9 @@ final discoveriesProvider =
 class MissionsNotifier extends StateNotifier<AsyncValue<List<UserMission>>> {
   final MissionService _service;
   final String _userId;
+  final Ref? _ref;
 
-  MissionsNotifier(this._service, this._userId)
+  MissionsNotifier(this._service, this._userId, [this._ref])
       : super(const AsyncValue.loading()) {
     if (_userId.isEmpty) {
       state = const AsyncValue.data([]);
@@ -239,14 +322,14 @@ class MissionsNotifier extends StateNotifier<AsyncValue<List<UserMission>>> {
 
   Future<void> loadMissions() async {
     if (_userId.isEmpty) {
-      state = const AsyncValue.data([]);
+      if (mounted) state = const AsyncValue.data([]);
       return;
     }
     try {
       final missions = await _service.getUserMissions(_userId);
-      state = AsyncValue.data(missions);
+      if (mounted) state = AsyncValue.data(missions);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (mounted) state = AsyncValue.error(e, st);
     }
   }
 
@@ -272,6 +355,12 @@ class MissionsNotifier extends StateNotifier<AsyncValue<List<UserMission>>> {
     );
     state = state.whenData((list) =>
         list.map((um) => um.id == updated.id ? updated : um).toList());
+
+    if (_ref != null) {
+      try {
+        await _ref.read(achievementsProvider.notifier).checkProgression();
+      } catch (_) {}
+    }
     return updated;
   }
 
@@ -293,6 +382,11 @@ class MissionsNotifier extends StateNotifier<AsyncValue<List<UserMission>>> {
 
     if (newlyCompleted.isNotEmpty) {
       await loadMissions();
+      if (_ref != null) {
+        try {
+          await _ref.read(achievementsProvider.notifier).checkProgression();
+        } catch (_) {}
+      }
     }
     return newlyCompleted;
   }
@@ -304,10 +398,10 @@ final missionsProvider =
   final service = ref.watch(missionServiceProvider);
   final auth = ref.watch(authProvider);
   final userId = auth.user?.id ?? '';
-  return MissionsNotifier(service, userId);
+  return MissionsNotifier(service, userId, ref);
 });
 
-/// Notifier managing achievement tracking and unlocks.
+/// Notifier managing achievement tracking, progression evaluation, and unlocks.
 class AchievementsNotifier extends StateNotifier<AsyncValue<List<Achievement>>> {
   final AchievementService _service;
   final String _userId;
@@ -315,24 +409,67 @@ class AchievementsNotifier extends StateNotifier<AsyncValue<List<Achievement>>> 
 
   AchievementsNotifier(this._service, this._userId, [this._ref])
       : super(const AsyncValue.loading()) {
-    if (_userId.isEmpty) {
-      state = const AsyncValue.data([]);
-    } else {
-      loadAchievements();
-    }
+    loadAchievements();
   }
 
   Future<void> loadAchievements() async {
-    if (_userId.isEmpty) {
-      state = const AsyncValue.data([]);
-      return;
-    }
     try {
       final list = await _service.getAchievements(_userId);
-      state = AsyncValue.data(list);
+      if (mounted) state = AsyncValue.data(list);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (mounted) state = AsyncValue.error(e, st);
     }
+  }
+
+  Future<List<Achievement>> checkProgression({
+    int? discoveryCount,
+    int? distinctFamilyCount,
+    int? completedMissionsCount,
+    int? gardenLevel,
+  }) async {
+    int effectiveDiscoveries = discoveryCount ?? 0;
+    int effectiveFamilies = distinctFamilyCount ?? 0;
+    int effectiveMissions = completedMissionsCount ?? 0;
+    int effectiveGardenLevel = gardenLevel ?? 1;
+
+    if (_ref != null) {
+      try {
+        if (discoveryCount == null || distinctFamilyCount == null) {
+          final discoveries = _ref.read(discoveriesProvider).value ?? [];
+          effectiveDiscoveries = discoveryCount ?? discoveries.length;
+          effectiveFamilies = distinctFamilyCount ??
+              discoveries
+                  .map((d) => d.family.trim().toLowerCase())
+                  .where((f) => f.isNotEmpty)
+                  .toSet()
+                  .length;
+        }
+
+        if (completedMissionsCount == null) {
+          final missions = _ref.read(missionsProvider).value ?? [];
+          final completedMissions = missions.where((m) => m.isCompleted).length;
+          final quests = _ref.read(questsProvider).value ?? [];
+          final completedQuests = quests.where((q) => q.isCompleted).length;
+          effectiveMissions = completedMissions + completedQuests;
+        }
+
+        if (gardenLevel == null) {
+          final garden = _ref.read(gardenStateProvider).value;
+          final profile = _ref.read(userProfileProvider).value ?? _ref.read(authProvider).user;
+          final totalPoints = profile?.totalPoints ?? 0;
+          effectiveGardenLevel = garden?.gardenLevel ?? GardenState.calculateLevel(totalPoints);
+        }
+      } catch (e) {
+        debugPrint('[Mossy] Notice inspecting providers for achievements: $e');
+      }
+    }
+
+    return checkAndAward(
+      discoveryCount: effectiveDiscoveries,
+      distinctFamilyCount: effectiveFamilies,
+      completedMissionsCount: effectiveMissions,
+      gardenLevel: effectiveGardenLevel,
+    );
   }
 
   Future<List<Achievement>> checkAndAward({
@@ -349,23 +486,31 @@ class AchievementsNotifier extends StateNotifier<AsyncValue<List<Achievement>>> 
       gardenLevel: gardenLevel,
     );
 
+    if (!mounted) return newlyUnlocked;
+
     if (newlyUnlocked.isNotEmpty) {
       if (_ref != null) {
-        _ref.read(latestBadgeAwardProvider.notifier).state = newlyUnlocked.first;
+        try {
+          _ref.read(latestBadgeAwardProvider.notifier).state = newlyUnlocked.first;
+        } catch (_) {}
       }
-      await loadAchievements();
+      final list = await _service.getAchievements(_userId);
+      if (mounted) state = AsyncValue.data(list);
     }
     return newlyUnlocked;
   }
 
   Future<Achievement?> unlock(String achievementId) async {
     final unlocked = await _service.unlockAchievement(_userId, achievementId);
+    if (!mounted) return unlocked;
     if (unlocked != null) {
       if (_ref != null) {
-        _ref.read(latestBadgeAwardProvider.notifier).state = unlocked;
+        try {
+          _ref.read(latestBadgeAwardProvider.notifier).state = unlocked;
+        } catch (_) {}
       }
-      state = state.whenData((list) =>
-          list.map((a) => a.id == unlocked.id ? unlocked : a).toList());
+      final list = await _service.getAchievements(_userId);
+      if (mounted) state = AsyncValue.data(list);
     }
     return unlocked;
   }
@@ -538,25 +683,22 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
       if (mounted) {
         state = AsyncValue.data(updated);
       }
-      _ref.read(authProvider.notifier).addPoints(points);
-
       // Check garden progression after point award
       await _ref.read(gardenStateProvider.notifier).syncWithPoints(newTotal);
 
       // Check achievements progression
-      final discoveries = _ref.read(discoveriesProvider).value ?? [];
-      final missions = _ref.read(missionsProvider).value ?? [];
-      final completedMissions = missions.where((m) => m.isCompleted).length;
-      final families = discoveries.map((d) => d.family).toSet().length;
-      final garden = _ref.read(gardenStateProvider).value;
-      final effectiveGardenLevel = garden?.gardenLevel ?? GardenState.calculateLevel(newTotal);
+      try {
+        await _ref.read(achievementsProvider.notifier).checkProgression();
+      } catch (e) {
+        debugPrint('[Mossy] Error checking achievements after points: $e');
+      }
 
-      await _ref.read(achievementsProvider.notifier).checkAndAward(
-        discoveryCount: discoveries.length,
-        distinctFamilyCount: families,
-        completedMissionsCount: completedMissions,
-        gardenLevel: effectiveGardenLevel,
-      );
+      // Finally update and persist points in auth session state
+      try {
+        _ref.read(authProvider.notifier).addPoints(points);
+      } catch (e) {
+        debugPrint('[Mossy] Notice updating authProvider points: $e');
+      }
     } catch (e) {
       debugPrint('[Mossy] Error adding points: $e');
     }

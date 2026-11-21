@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -102,7 +103,7 @@ class _DiscoveryMapScreenState extends ConsumerState<DiscoveryMapScreen> {
     }
   }
 
-  void _fitAllDiscoveries(List<Discovery> located) {
+  void _fitAllDiscoveries(List<Discovery> located, [List<LatLng>? pointsOverride]) {
     if (located.isEmpty) return;
     if (located.length == 1) {
       _mapController.move(
@@ -113,7 +114,7 @@ class _DiscoveryMapScreenState extends ConsumerState<DiscoveryMapScreen> {
     }
 
     try {
-      final points = located.map((d) => LatLng(d.latitude!, d.longitude!)).toList();
+      final points = pointsOverride ?? located.map((d) => LatLng(d.latitude!, d.longitude!)).toList();
       final bounds = LatLngBounds.fromPoints(points);
       _mapController.fitCamera(
         CameraFit.bounds(
@@ -127,6 +128,78 @@ class _DiscoveryMapScreenState extends ConsumerState<DiscoveryMapScreen> {
       final first = located.first;
       _mapController.move(LatLng(first.latitude!, first.longitude!), 14.0);
     }
+  }
+
+  /// Groups discoveries sharing the same or nearby GPS coordinates (within ~18m).
+  List<_DiscoveryMapLocationGroup> _groupNearbyDiscoveries(List<Discovery> discoveries) {
+    final List<_DiscoveryMapLocationGroup> groups = [];
+    const double threshold = 0.00018;
+
+    for (final d in discoveries) {
+      bool added = false;
+      for (final g in groups) {
+        final latDiff = (g.anchor.latitude - d.latitude!).abs();
+        final lonDiff = (g.anchor.longitude - d.longitude!).abs();
+        if (latDiff < threshold && lonDiff < threshold) {
+          g.discoveries.add(d);
+          added = true;
+          break;
+        }
+      }
+      if (!added) {
+        groups.add(_DiscoveryMapLocationGroup(
+          anchor: LatLng(d.latitude!, d.longitude!),
+          discoveries: [d],
+        ));
+      }
+    }
+    return groups;
+  }
+
+  /// Calculates visual coordinates for discoveries:
+  /// - Single discoveries stay at anchor coordinates.
+  /// - Multiple discoveries at the same spot branch out radially in flower petal formation so every pin is reachable.
+  List<_PositionedDiscovery> _computePositionedDiscoveries(List<_DiscoveryMapLocationGroup> groups) {
+    final List<_PositionedDiscovery> result = [];
+
+    for (final group in groups) {
+      final count = group.discoveries.length;
+      final anchor = group.anchor;
+
+      if (count == 1) {
+        result.add(_PositionedDiscovery(
+          discovery: group.discoveries.first,
+          displayPosition: anchor,
+          groupIndex: 0,
+          groupSize: 1,
+          groupAnchor: anchor,
+        ));
+      } else {
+        // Petal offset radius: ~0.00020 to 0.00030 degrees (~18-28m ground distance)
+        final double radius = count <= 3
+            ? 0.00020
+            : (count <= 6 ? 0.00026 : 0.00032);
+        final cosLat = math.cos(anchor.latitude * math.pi / 180.0);
+        final lonScale = cosLat.abs() > 0.0001 ? cosLat.abs() : 1.0;
+
+        for (int i = 0; i < count; i++) {
+          final d = group.discoveries[i];
+          final angle = (2 * math.pi * i / count) - (math.pi / 2); // Start at 12 o'clock
+          final lat = anchor.latitude + (radius * math.cos(angle));
+          final lon = anchor.longitude + ((radius / lonScale) * math.sin(angle));
+
+          result.add(_PositionedDiscovery(
+            discovery: d,
+            displayPosition: LatLng(lat, lon),
+            groupIndex: i,
+            groupSize: count,
+            groupAnchor: anchor,
+          ));
+        }
+      }
+    }
+
+    return result;
   }
 
   @override
@@ -163,13 +236,19 @@ class _DiscoveryMapScreenState extends ConsumerState<DiscoveryMapScreen> {
           data: (discoveries) {
             // Strictly real discoveries with GPS coordinates belonging to the authenticated user.
             final located = discoveries.where((d) => d.hasLocation).toList();
+            final locationGroups = _groupNearbyDiscoveries(located);
+            final positionedDiscoveries = _computePositionedDiscoveries(locationGroups);
+            final Map<String, _PositionedDiscovery> positionedMap = {
+              for (final pd in positionedDiscoveries) pd.discovery.id: pd,
+            };
 
             // Fit camera on first data arrival
             if (located.isNotEmpty && !_hasInitialFitted) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted && !_hasInitialFitted) {
                   _hasInitialFitted = true;
-                  _fitAllDiscoveries(located);
+                  final displayPoints = positionedDiscoveries.map((pd) => pd.displayPosition).toList();
+                  _fitAllDiscoveries(located, displayPoints);
                 }
               });
             }
@@ -202,21 +281,48 @@ class _DiscoveryMapScreenState extends ConsumerState<DiscoveryMapScreen> {
                     // Plant Discovery Markers Layer
                     MarkerLayer(
                       markers: [
-                        // Authenticated user discoveries
-                        ...located.map((d) {
-                          final isSelected = _selectedDiscovery?.id == d.id;
+                        // Group center anchor hubs for spots with multiple discoveries
+                        for (final group in locationGroups)
+                          if (group.discoveries.length > 1)
+                            Marker(
+                              point: group.anchor,
+                              width: 26,
+                              height: 26,
+                              alignment: Alignment.center,
+                              child: _LocationGroupCenterHub(
+                                count: group.discoveries.length,
+                                onTap: () {
+                                  final currentId = _selectedDiscovery?.id;
+                                  final next = group.discoveries.firstWhere(
+                                    (d) => d.id != currentId,
+                                    orElse: () => group.discoveries.first,
+                                  );
+                                  setState(() => _selectedDiscovery = next);
+                                  final pos = positionedMap[next.id]?.displayPosition ?? group.anchor;
+                                  _mapController.move(
+                                    pos,
+                                    _mapController.camera.zoom.clamp(15.0, 17.5),
+                                  );
+                                },
+                              ),
+                            ),
+                        // Individual positioned plant markers
+                        ...positionedDiscoveries.map((pd) {
+                          final isSelected = _selectedDiscovery?.id == pd.discovery.id;
                           return Marker(
-                            point: LatLng(d.latitude!, d.longitude!),
+                            point: pd.displayPosition,
                             width: isSelected ? 58 : 46,
                             height: isSelected ? 58 : 46,
                             alignment: Alignment.center,
                             child: _PlantMapMarker(
-                              discovery: d,
+                              discovery: pd.discovery,
                               isSelected: isSelected,
+                              groupIndex: pd.groupIndex,
+                              groupSize: pd.groupSize,
                               onTap: () {
-                                setState(() => _selectedDiscovery = d);
+                                setState(() => _selectedDiscovery = pd.discovery);
                                 _mapController.move(
-                                  LatLng(d.latitude!, d.longitude!),
+                                  pd.displayPosition,
                                   _mapController.camera.zoom.clamp(14.0, 17.0),
                                 );
                               },
@@ -317,7 +423,10 @@ class _DiscoveryMapScreenState extends ConsumerState<DiscoveryMapScreen> {
                         _MapControlButton(
                           icon: Icons.filter_center_focus_rounded,
                           tooltip: isFr ? 'Voir toutes mes plantes' : 'Fit all plants',
-                          onTap: () => _fitAllDiscoveries(located),
+                          onTap: () {
+                            final displayPoints = positionedDiscoveries.map((pd) => pd.displayPosition).toList();
+                            _fitAllDiscoveries(located, displayPoints);
+                          },
                         ),
                         const SizedBox(height: 10),
                       ],
@@ -353,14 +462,29 @@ class _DiscoveryMapScreenState extends ConsumerState<DiscoveryMapScreen> {
                 ),
 
                 // ─── 4. Selected Discovery Preview Card ─────────────────────
-                if (_selectedDiscovery != null)
-                  Positioned(
+                if (_selectedDiscovery != null) () {
+                  final currentGroup = locationGroups.firstWhere(
+                    (g) => g.discoveries.any((d) => d.id == _selectedDiscovery!.id),
+                    orElse: () => _DiscoveryMapLocationGroup(
+                      anchor: LatLng(_selectedDiscovery!.latitude!, _selectedDiscovery!.longitude!),
+                      discoveries: [_selectedDiscovery!],
+                    ),
+                  );
+
+                  return Positioned(
                     left: 0,
                     right: 0,
                     bottom: MediaQuery.of(context).padding.bottom + 8,
                     child: _DiscoveryMapPreviewCard(
                       discovery: _selectedDiscovery!,
+                      locationGroup: currentGroup.discoveries,
                       isFr: isFr,
+                      onSelectDiscovery: (next) {
+                        setState(() => _selectedDiscovery = next);
+                        final pos = positionedMap[next.id]?.displayPosition ??
+                            LatLng(next.latitude!, next.longitude!);
+                        _mapController.move(pos, _mapController.camera.zoom.clamp(14.0, 17.5));
+                      },
                       onClose: () => setState(() => _selectedDiscovery = null),
                       onViewDetail: () {
                         Navigator.push(
@@ -371,7 +495,8 @@ class _DiscoveryMapScreenState extends ConsumerState<DiscoveryMapScreen> {
                         );
                       },
                     ),
-                  ),
+                  );
+                }(),
 
                 // ─── 5. Empty State Helper (When 0 plants have location) ─────
                 if (located.isEmpty)
@@ -397,11 +522,15 @@ class _DiscoveryMapScreenState extends ConsumerState<DiscoveryMapScreen> {
 class _PlantMapMarker extends StatelessWidget {
   final Discovery discovery;
   final bool isSelected;
+  final int groupIndex;
+  final int groupSize;
   final VoidCallback onTap;
 
   const _PlantMapMarker({
     required this.discovery,
     required this.isSelected,
+    this.groupIndex = 0,
+    this.groupSize = 1,
     required this.onTap,
   });
 
@@ -463,6 +592,30 @@ class _PlantMapMarker extends StatelessWidget {
               ),
             ),
           ),
+          // Group index badge when multiple discoveries are at the same spot
+          if (groupSize > 1)
+            Positioned(
+              bottom: -4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isSelected ? rarity.color : AppColors.darkGreen,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white, width: 1.2),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withAlpha(35), blurRadius: 3),
+                  ],
+                ),
+                child: Text(
+                  '${groupIndex + 1}/$groupSize',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -547,13 +700,17 @@ class _UserLocationMarker extends StatelessWidget {
 // ─── Floating Discovery Preview Card ─────────────────────────────────────────
 class _DiscoveryMapPreviewCard extends StatelessWidget {
   final Discovery discovery;
+  final List<Discovery> locationGroup;
   final bool isFr;
+  final ValueChanged<Discovery>? onSelectDiscovery;
   final VoidCallback onClose;
   final VoidCallback onViewDetail;
 
   const _DiscoveryMapPreviewCard({
     required this.discovery,
+    this.locationGroup = const [],
     required this.isFr,
+    this.onSelectDiscovery,
     required this.onClose,
     required this.onViewDetail,
   });
@@ -581,6 +738,62 @@ class _DiscoveryMapPreviewCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Location group carousel bar if multiple plants are at this spot
+          if (locationGroup.length > 1) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.mintLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.sageGreen.withAlpha(120)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_rounded, size: 14, color: AppColors.darkGreen),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 28),
+                    tooltip: isFr ? 'Plante précédente' : 'Previous plant',
+                    onPressed: () {
+                      final currIdx = locationGroup.indexWhere((d) => d.id == discovery.id);
+                      final prevIdx = (currIdx - 1 + locationGroup.length) % locationGroup.length;
+                      onSelectDiscovery?.call(locationGroup[prevIdx]);
+                    },
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('📍', style: TextStyle(fontSize: 12)),
+                      const SizedBox(width: 4),
+                      Text(
+                        isFr
+                            ? 'Plante ${locationGroup.indexWhere((d) => d.id == discovery.id) + 1} sur ${locationGroup.length} à cet endroit'
+                            : 'Plant ${locationGroup.indexWhere((d) => d.id == discovery.id) + 1} of ${locationGroup.length} at this spot',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11.5,
+                          color: AppColors.darkGreen,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.darkGreen),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 28),
+                    tooltip: isFr ? 'Plante suivante' : 'Next plant',
+                    onPressed: () {
+                      final currIdx = locationGroup.indexWhere((d) => d.id == discovery.id);
+                      final nextIdx = (currIdx + 1) % locationGroup.length;
+                      onSelectDiscovery?.call(locationGroup[nextIdx]);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -866,4 +1079,73 @@ class _EmptyDiscoveriesBanner extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── Location Group Center Hub ───────────────────────────────────────────────
+class _LocationGroupCenterHub extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+
+  const _LocationGroupCenterHub({
+    required this.count,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.darkGreen,
+          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(45),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            '$count',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 10.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Helper Models for Map Coordinate Clustering ────────────────────────────
+class _DiscoveryMapLocationGroup {
+  final LatLng anchor;
+  final List<Discovery> discoveries;
+
+  _DiscoveryMapLocationGroup({
+    required this.anchor,
+    required this.discoveries,
+  });
+}
+
+class _PositionedDiscovery {
+  final Discovery discovery;
+  final LatLng displayPosition;
+  final int groupIndex;
+  final int groupSize;
+  final LatLng groupAnchor;
+
+  const _PositionedDiscovery({
+    required this.discovery,
+    required this.displayPosition,
+    required this.groupIndex,
+    required this.groupSize,
+    required this.groupAnchor,
+  });
 }

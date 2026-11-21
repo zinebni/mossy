@@ -149,5 +149,68 @@ void main() {
       // Preview card should open with plant details and View in Journal button
       expect(find.text('View in Journal'), findsOneWidget);
     });
+
+    testWidgets('handles multiple discoveries at identical coordinates with petal separation and location switcher', (tester) async {
+      final plantA = _mockDiscovery(
+        id: 'plant-a',
+        name: 'Red Poppy',
+        sci: 'Papaver rhoeas',
+        lat: 48.8566,
+        lng: 2.3522,
+        rarity: DiscoveryRarity.common,
+      );
+      final plantB = _mockDiscovery(
+        id: 'plant-b',
+        name: 'Wild Chamomile',
+        sci: 'Matricaria chamomilla',
+        lat: 48.8566,
+        lng: 2.3522, // Same coordinate!
+        rarity: DiscoveryRarity.rare,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            discoveriesProvider.overrideWith(
+              (ref) => DiscoveriesNotifier(
+                _FakeDiscoveryService([plantA, plantB]),
+                'test-user-123',
+                ref,
+              ),
+            ),
+          ],
+          child: const MaterialApp(
+            home: DiscoveryMapScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Count shows 2 Plants Mapped
+      expect(find.textContaining('2 Plants Mapped'), findsOneWidget);
+
+      // Both markers should have group index badges (1/2 and 2/2)
+      expect(find.text('1/2'), findsOneWidget);
+      expect(find.text('2/2'), findsOneWidget);
+
+      // Group center hub with count '2' should be rendered
+      expect(find.text('2'), findsOneWidget);
+
+      // Tap the first plant marker
+      await tester.tap(find.text('1/2'));
+      await tester.pumpAndSettle();
+
+      // Preview card should display location group switcher
+      expect(find.textContaining('Plant 1 of 2 at this spot'), findsOneWidget);
+
+      // Tap next arrow in preview card switcher to switch to plant-b
+      await tester.tap(find.byIcon(Icons.arrow_forward_ios_rounded));
+      await tester.pumpAndSettle();
+
+      // Card now shows plant 2
+      expect(find.textContaining('Plant 2 of 2 at this spot'), findsOneWidget);
+      expect(find.text('Wild Chamomile'), findsOneWidget);
+    });
   });
 }

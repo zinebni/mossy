@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
+import 'services/sound_service.dart';
 import 'services/supabase_service.dart';
 import 'shared/providers/app_providers.dart';
 
@@ -19,6 +20,9 @@ void main() async {
 
   // Initialise Supabase (gracefully degrades to demo mode if unconfigured)
   await SupabaseService.instance.initialize();
+
+  // Initialise Sound & Music preferences
+  await SoundService.instance.initPreferences();
 
   runApp(
     const ProviderScope(child: MossyApp()),

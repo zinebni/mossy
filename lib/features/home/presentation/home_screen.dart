@@ -77,6 +77,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.listen<Achievement?>(latestBadgeAwardProvider, (prev, next) {
       if (next != null) {
         BadgeUnlockAlert.show(context, achievement: next, isFr: isFr);
+        ref.read(latestBadgeAwardProvider.notifier).state = null;
       }
     });
 

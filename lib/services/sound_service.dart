@@ -2,8 +2,9 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// Joyful sound effects service for Mossy.
+/// Joyful sound effects and cozy background audio service for Mossy.
 /// Uses bundled WAV audio assets with instant fallback to synthesized
 /// in-memory WAV PCM bytes and native [SystemSound] clicks.
 class SoundService {
@@ -14,12 +15,21 @@ class SoundService {
   factory SoundService() => instance;
 
   bool isMuted = false;
+  bool isMusicMuted = false;
+  double musicVolume = 0.22;
+
+  AudioPlayer? _bgmPlayer;
+  bool _isMusicPlaying = false;
+  bool _prefsLoaded = false;
+
+  bool get isMusicPlaying => _isMusicPlaying;
 
   // Cached in-memory WAV byte buffers for instant offline fallback
   static Uint8List? _unlockChimeBytes;
   static Uint8List? _badgeFanfareBytes;
   static Uint8List? _gardenTapBytes;
   static Uint8List? _celebrationBytes;
+  static Uint8List? _cozyLoopBytes;
 
   static Uint8List getUnlockChimeBytes() {
     return _unlockChimeBytes ??= _synthesizeArpeggioWav(
@@ -51,6 +61,117 @@ class SoundService {
     );
   }
 
+  static Uint8List getCozyBackgroundBytes() {
+    return _cozyLoopBytes ??= _synthesizeCozyLoopWav();
+  }
+
+  /// Loads persisted sound and music mute preferences from SharedPreferences.
+  Future<void> initPreferences() async {
+    if (_prefsLoaded) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      isMusicMuted = prefs.getBool('mossy_music_muted') ?? false;
+      isMuted = prefs.getBool('mossy_sound_muted') ?? false;
+      _prefsLoaded = true;
+    } catch (_) {}
+  }
+
+  /// Starts the soft, cozy background music loop.
+  Future<void> startBackgroundMusic({double? volume}) async {
+    await initPreferences();
+    if (isMusicMuted) return;
+
+    try {
+      final vol = volume ?? musicVolume;
+      _bgmPlayer ??= AudioPlayer();
+      await _bgmPlayer!.setReleaseMode(ReleaseMode.loop).catchError((_) {});
+      await _bgmPlayer!.setVolume(vol).catchError((_) {});
+
+      bool played = false;
+      try {
+        await _bgmPlayer!.play(AssetSource('sounds/cozy_background.wav'), volume: vol);
+        played = true;
+      } catch (_) {
+        played = false;
+      }
+
+      if (!played) {
+        final bytes = getCozyBackgroundBytes();
+        await _bgmPlayer!.play(BytesSource(bytes, mimeType: 'audio/wav'), volume: vol);
+      }
+      _isMusicPlaying = true;
+    } catch (e) {
+      debugPrint('[Mossy SoundService] background music error: $e');
+    }
+  }
+
+  /// Pauses the background music loop.
+  Future<void> pauseBackgroundMusic() async {
+    _isMusicPlaying = false;
+    try {
+      await _bgmPlayer?.pause().catchError((_) {});
+    } catch (_) {}
+  }
+
+  /// Resumes the background music loop if not muted.
+  Future<void> resumeBackgroundMusic() async {
+    await initPreferences();
+    if (isMusicMuted) return;
+
+    if (_bgmPlayer != null) {
+      try {
+        await _bgmPlayer!.resume().catchError((_) {});
+        _isMusicPlaying = true;
+      } catch (_) {
+        await startBackgroundMusic();
+      }
+    } else {
+      await startBackgroundMusic();
+    }
+  }
+
+  /// Stops the background music loop.
+  Future<void> stopBackgroundMusic() async {
+    _isMusicPlaying = false;
+    try {
+      await _bgmPlayer?.stop().catchError((_) {});
+    } catch (_) {}
+  }
+
+  /// Sets whether the background music loop is muted and persists the choice.
+  Future<void> setMusicMuted(bool muted) async {
+    isMusicMuted = muted;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('mossy_music_muted', muted);
+    } catch (_) {}
+
+    if (muted) {
+      await pauseBackgroundMusic();
+    } else {
+      await startBackgroundMusic();
+    }
+  }
+
+  /// Toggles the background music loop mute state.
+  Future<void> toggleMusic() async {
+    await setMusicMuted(!isMusicMuted);
+  }
+
+  /// Sets whether sound effects are muted and persists the choice.
+  Future<void> setSoundMuted(bool muted) async {
+    isMuted = muted;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('mossy_sound_muted', muted);
+    } catch (_) {}
+  }
+
+  /// Toggles the sound effects mute state.
+  Future<void> toggleSound() async {
+    await setSoundMuted(!isMuted);
+  }
+
   /// Plays a joyful ascending chime when an item or garden level is unlocked.
   Future<void> playUnlockSound() async {
     await _play(
@@ -58,6 +179,16 @@ class SoundService {
       byteGetter: getUnlockChimeBytes,
       haptic: HapticFeedback.mediumImpact,
       volume: 0.9,
+    );
+  }
+
+  /// Plays a joyful chime and triggers haptic vibration when a plant is recognized.
+  Future<void> playRecognitionSound() async {
+    await _play(
+      assetPath: 'sounds/unlock_chime.wav',
+      byteGetter: getUnlockChimeBytes,
+      haptic: HapticFeedback.mediumImpact,
+      volume: 0.95,
     );
   }
 
@@ -204,6 +335,113 @@ class SoundService {
     return _buildWavHeaderAndData(pcmSamples, sampleRate);
   }
 
+  /// Synthesizes a warm, kid-friendly cozy nature melody loop (~9.6s) in 16-bit mono WAV format.
+  static Uint8List _synthesizeCozyLoopWav({int sampleRate = 22050}) {
+    const duration = 9.6;
+    final totalSamples = (duration * sampleRate).toInt();
+    final pcmSamples = List<int>.filled(totalSamples, 0);
+
+    // Notes: [startTimeInSec, frequencyInHz, velocity]
+    final notes = [
+      // Bar 1 - Cmaj7 (dew on leaves)
+      [0.0, 523.25, 0.9],
+      [0.6, 659.25, 0.85],
+      [1.2, 783.99, 0.8],
+      [1.8, 987.77, 0.75],
+      // Bar 2 - Am7 (floating leaf)
+      [2.4, 880.00, 0.85],
+      [3.0, 783.99, 0.8],
+      [3.6, 659.25, 0.8],
+      [4.2, 587.33, 0.75],
+      // Bar 3 - Fmaj7 (blooming flower)
+      [4.8, 698.46, 0.85],
+      [5.4, 880.00, 0.85],
+      [6.0, 1046.50, 0.8],
+      [6.6, 783.99, 0.75],
+      // Bar 4 - G -> resolve back to C
+      [7.2, 659.25, 0.8],
+      [7.8, 587.33, 0.8],
+      [8.4, 392.00, 0.75],
+      [9.0, 587.33, 0.7],
+    ];
+
+    // Synthesize melody notes (music box / kalimba timbre with soft attack and warm decay)
+    for (final note in notes) {
+      final startTime = note[0];
+      final freq = note[1];
+      final vel = note[2];
+      final startIdx = (startTime * sampleRate).toInt();
+      const noteDur = 1.4;
+      final noteSamples = (noteDur * sampleRate).toInt();
+
+      for (int s = 0; s < noteSamples; s++) {
+        final targetIdx = startIdx + s;
+        if (targetIdx >= totalSamples) break;
+
+        final t = s / sampleRate;
+        final attack = (t < 0.015) ? (t / 0.015) : 1.0;
+        final decay = math.exp(-t * 2.4);
+        final env = attack * decay;
+
+        final wave = math.sin(2 * math.pi * freq * t) +
+            0.26 * math.sin(4 * math.pi * freq * t) +
+            0.08 * math.sin(6 * math.pi * freq * t);
+
+        final amplitude = 5200.0 * vel * env * wave;
+        pcmSamples[targetIdx] += amplitude.toInt();
+      }
+    }
+
+    // Soft background pad/bass drone chords for each bar
+    final barRoots = [
+      [0.0, 2.4, 130.81, 196.00], // C3, G3
+      [2.4, 4.8, 110.00, 164.81], // A2, E3
+      [4.8, 7.2, 87.31, 130.81],  // F2, C3
+      [7.2, 9.6, 98.00, 146.83],  // G2, D3
+    ];
+
+    for (final bar in barRoots) {
+      final start = bar[0];
+      final end = bar[1];
+      final f1 = bar[2];
+      final f2 = bar[3];
+      final startIdx = (start * sampleRate).toInt();
+      final endIdx = (end * sampleRate).toInt();
+
+      for (int i = startIdx; i < endIdx && i < totalSamples; i++) {
+        final t = i / sampleRate;
+        final barT = t - start;
+        const barLen = 2.4;
+        double padEnv = 1.0;
+        if (barT < 0.25) {
+          padEnv = barT / 0.25;
+        } else if (barT > barLen - 0.25) {
+          padEnv = (barLen - barT) / 0.25;
+        }
+
+        final padWave = 0.6 * math.sin(2 * math.pi * f1 * t) +
+            0.4 * math.sin(2 * math.pi * f2 * t);
+        pcmSamples[i] += (900.0 * padEnv * padWave).toInt();
+      }
+    }
+
+    // Smooth edge crossfade on the first and last 200 samples to ensure seamless loop
+    const edgeSamples = 200;
+    for (int i = 0; i < edgeSamples; i++) {
+      final fade = i / edgeSamples;
+      pcmSamples[i] = (pcmSamples[i] * fade).toInt();
+      final endI = totalSamples - 1 - i;
+      pcmSamples[endI] = (pcmSamples[endI] * fade).toInt();
+    }
+
+    // Clamp samples
+    for (int i = 0; i < totalSamples; i++) {
+      pcmSamples[i] = pcmSamples[i].clamp(-32000, 32000);
+    }
+
+    return _buildWavHeaderAndData(pcmSamples, sampleRate);
+  }
+
   /// Encapsulates raw PCM 16-bit mono samples with standard 44-byte RIFF/WAVE header.
   static Uint8List _buildWavHeaderAndData(List<int> samples, int sampleRate) {
     final dataSize = samples.length * 2;
@@ -249,5 +487,9 @@ class SoundService {
     return buffer.buffer.asUint8List();
   }
 
-  void dispose() {}
+  void dispose() {
+    _bgmPlayer?.dispose().catchError((_) {});
+    _bgmPlayer = null;
+    _isMusicPlaying = false;
+  }
 }

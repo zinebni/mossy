@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mossy/features/garden/presentation/widgets/garden_painter.dart';
 import 'package:mossy/services/sound_service.dart';
 import 'package:mossy/shared/models/achievement.dart';
@@ -19,6 +20,42 @@ void main() {
       await sound.playCelebrationSound();
 
       expect(sound.isMuted, isTrue);
+    });
+
+    test('SoundService cozy background music loop synthesis and controls', () async {
+      SharedPreferences.setMockInitialValues({});
+      final sound = SoundService.instance;
+      sound.isMuted = true;
+      sound.isMusicMuted = false;
+
+      // Verify cozy background bytes synthesis
+      final bgmBytes = SoundService.getCozyBackgroundBytes();
+      expect(bgmBytes.length, greaterThan(1000));
+      // Verify RIFF WAVE header bytes ('R', 'I', 'F', 'F')
+      expect(bgmBytes[0], equals(0x52));
+      expect(bgmBytes[1], equals(0x49));
+      expect(bgmBytes[2], equals(0x46));
+      expect(bgmBytes[3], equals(0x46));
+      // 'W', 'A', 'V', 'E'
+      expect(bgmBytes[8], equals(0x57));
+      expect(bgmBytes[9], equals(0x41));
+      expect(bgmBytes[10], equals(0x56));
+      expect(bgmBytes[11], equals(0x45));
+
+      // Test mute and toggle persistence
+      await sound.setMusicMuted(true);
+      expect(sound.isMusicMuted, isTrue);
+
+      await sound.toggleMusic();
+      expect(sound.isMusicMuted, isFalse);
+
+      // Verify playback methods execute gracefully in headless runner
+      await sound.startBackgroundMusic();
+      await sound.pauseBackgroundMusic();
+      await sound.resumeBackgroundMusic();
+      await sound.stopBackgroundMusic();
+
+      await sound.setMusicMuted(true);
     });
 
     test('GardenState provides bilingual names and descriptions for unlocked items', () {
